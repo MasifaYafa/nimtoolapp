@@ -1,0 +1,159 @@
+/* ===========================
+   Topology.css — pro dark UI
+   =========================== */
+
+:root {
+  --bg: #0b1220;
+  --surface: #0f172a;
+  --surface-2: #111827;
+  --border: #1f2a44;
+
+  --text: #e5e7eb;
+  --text-muted: #b3bbc7;
+
+  --brand: #22c55e;
+  --info: #3b82f6;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --orange-500: #f97316;
+  --orange-600: #ea580c;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-1: 0 6px 20px rgba(0,0,0,.25);
+  --shadow-2: 0 12px 30px rgba(0,0,0,.35);
+}
+
+/* Page shell (with bg image hook) */
+.topology-container {
+  min-height: calc(100vh - 70px);
+  padding: 28px 0 56px;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 700px at 10% -10%, rgba(34, 197, 94, 0.08), transparent 60%),
+    linear-gradient(135deg, var(--bg), #0a0f1a 60%);
+  position: relative;
+}
+.topology-container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1200px 700px at 20% -10%, rgba(59,130,246,.18), transparent),
+    radial-gradient(900px 600px at 100% -10%, rgba(234,88,12,.14), transparent),
+    rgba(8, 12, 22, 0.55);
+  pointer-events: none;
+  z-index: 0;
+}
+.topology-container .container { width: min(1200px, 92vw); margin: 0 auto; position: relative; z-index: 1; }
+
+/* Header */
+.page-header {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-1);
+}
+.page-header h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; letter-spacing: .2px; color: var(--text); }
+.page-header p { margin: 0; color: var(--text-muted); font-size: 14px; }
+
+/* Cards */
+.topology-controls,
+.network-stats,
+.topology-canvas,
+.device-summary {
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-2);
+  margin-bottom: 18px;
+}
+
+/* Buttons */
+.btn {
+  --btn-bg: #18233a; --btn-bd: var(--border); --btn-fg: var(--text);
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 10px 14px; border-radius: 10px;
+  background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-bd);
+  cursor: pointer; user-select: none;
+  transition: transform .06s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { --btn-bg: linear-gradient(135deg, var(--orange-600), var(--orange-500)); --btn-bd: rgba(234,88,12,.35); color: #091019; border: none; box-shadow: 0 8px 20px rgba(234, 88, 12, .30), inset 0 1px 0 rgba(255,255,255,.12); }
+.btn-primary:hover { filter: brightness(1.05); }
+.btn-secondary { --btn-bg: linear-gradient(180deg, #17233e, #152039); --btn-bd: rgba(148,163,184,.25); }
+.btn-info { --btn-bg: linear-gradient(180deg, #1e3a8a, #1b2f6d); --btn-bd: rgba(59,130,246,.35); }
+.btn-sm { padding: 8px 12px; font-size: 12px; border-radius: 8px; }
+.btn[disabled] { opacity: .6; cursor: not-allowed; }
+
+/* Controls row */
+.topology-controls { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.view-controls, .topology-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* KPI chips */
+.network-stats { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.stat-item { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 999px; background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--text); }
+.stat-icon { font-size: 18px; opacity: .9; }
+.stat-text { font-weight: 700; letter-spacing: .2px; }
+
+/* Canvas */
+.topology-canvas { position: relative; overflow: hidden; }
+.topology-canvas svg { width: 100%; height: 500px; user-select: none; }
+
+/* edges & labels */
+.topology-canvas line { stroke: var(--info); stroke-width: 0.35; opacity: 0.8; }
+.topology-canvas text.node-label { fill: var(--text-muted); font-size: 2.6px; }
+
+/* dragging affordances */
+.topology-canvas.editing .draggable { cursor: grab; }
+.topology-canvas.editing .draggable:active { cursor: grabbing; }
+
+/* Legend */
+.topology-legend {
+  position: absolute; top: 18px; right: 18px;
+  background: rgba(10, 15, 27, 0.92); backdrop-filter: blur(2px);
+  padding: 14px; border-radius: 12px; border: 1px solid var(--border);
+  color: var(--text); box-shadow: var(--shadow-1);
+}
+.topology-legend h4 { margin: 0 0 10px; font-size: 13px; font-weight: 800; color: var(--text); }
+.legend-items { display: flex; flex-direction: column; gap: 6px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.legend-color { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,.18); }
+.legend-color.online  { background-color: var(--brand); }
+.legend-color.offline { background-color: var(--danger); }
+.legend-color.warning { background-color: var(--warn); }
+
+/* Device list */
+.device-summary h3 { margin: 0 0 14px; font-size: 16px; font-weight: 800; color: var(--text); }
+.device-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.device-card { display: flex; align-items: center; gap: 12px; padding: 14px; background: #101b30; border: 1px solid var(--border); border-radius: 12px; transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease; }
+.device-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: rgba(59,130,246,.35); }
+.device-icon { font-size: 22px; opacity: .9; }
+.device-info h4 { margin: 0 0 4px 0; font-size: 14px; font-weight: 800; letter-spacing: .2px; color: var(--text); }
+.device-type { margin: 0 0 6px 0; font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.device-status { font-size: 10px; padding: 3px 8px; border-radius: 999px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; border: 1px solid transparent; }
+.device-status.online  { background: rgba(34,197,94,.18);  color: #bef7cb; border-color: rgba(34,197,94,.35); }
+.device-status.offline { background: rgba(239,68,68,.20); color: #ffd0d0; border-color: rgba(239,68,68,.38); }
+.device-status.warning { background: rgba(245,158,11,.20); color: #ffe1b3; border-color: rgba(245,158,11,.38); }
+
+/* Helpers */
+.topo-loading { background: linear-gradient(180deg, var(--surface), var(--surface-2)); color: var(--text-muted); border: 1px solid var(--border); padding: 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-1); }
+.topo-error { background: linear-gradient(180deg, #2a1010, #1f0c0c); color: #ffd7d7; border: 1px solid rgba(239, 68, 68, .45); padding: 12px 14px; border-radius: var(--radius-md); margin-bottom: 16px; }
+.topo-success { background: linear-gradient(180deg, #103015, #0c2411); color: #b7f7c3; border: 1px solid rgba(34,197,94,.45); padding: 12px 14px; border-radius: var(--radius-md); margin-bottom: 16px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .topology-controls { flex-direction: column; align-items: stretch; }
+  .view-controls, .topology-actions { justify-content: center; }
+  .topology-canvas svg { height: 420px; }
+}
+@media (max-width: 600px) {
+  .topology-canvas svg { height: 360px; }
+  .device-grid { grid-template-columns: 1fr; }
+  .topology-legend { position: static; margin-top: 12px; }
+}

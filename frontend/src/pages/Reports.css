@@ -1,0 +1,377 @@
+/* ============================================================
+   Reports — Dark, sharp UI matching the Dashboard
+   Scope: .reports-container only
+   ============================================================ */
+
+.reports-container {
+  --bg:         var(--dash-bg, #0b1220);
+  --bg-2:       var(--dash-bg-2, #0e1628);
+  --card:       var(--dash-card, #101a31);
+  --card-2:     var(--dash-card-2, #0f192e);
+  --elev:       var(--dash-elev, #17223d);
+  --border:     var(--dash-border, rgba(255,255,255,0.08));
+  --muted:      var(--dash-muted, #94a3b8);
+  --text:       var(--dash-text, #e5e7eb);
+  --text-soft:  var(--dash-text-soft, #cbd5e1);
+  --primary:    var(--dash-primary, #3b82f6); /* blue */
+  --primary-2:  var(--dash-primary-2, #2563eb);
+  --primary-3:  var(--dash-primary-3, #1d4ed8);
+  --orange:     #f97316; /* accent chip like dashboard */
+  --orange-2:   #ea580c;
+  --success:    #10b981;
+  --warning:    #f59e0b;
+  --danger:     #ef4444;
+  --info:       #60a5fa;
+  --shadow:     0 10px 28px rgba(0,0,0,.38);
+  --radius:     14px;
+  --radius-sm:  10px;
+}
+
+.reports-container {
+  padding: 28px 0 56px;
+  min-height: calc(100vh - 70px);
+  color: var(--text);
+  background:
+    radial-gradient(1200px 900px at 0% -10%, rgba(59,130,246,0.08), transparent),
+    radial-gradient(900px 700px at 100% -10%, rgba(16,185,129,0.06), transparent),
+    var(--bg);
+}
+
+.reports-container .container {
+  width: min(1200px, 92vw);
+  margin: 0 auto;
+}
+
+/* ---------- Header / Toolbar ---------- */
+.page-header {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+
+.page-header h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  color: var(--text);
+}
+.page-header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.toolbar-actions { display: flex; align-items: center; gap: 10px; }
+
+/* ---------- Card Chrome ---------- */
+.report-config .config-section,
+.available-reports,
+.export-section {
+  background: linear-gradient(180deg, var(--card), var(--card-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+.report-config { margin-bottom: 18px; }
+.export-section { margin: 18px 0; }
+.available-reports { margin-top: 18px; }
+
+/* ---------- Section headings ---------- */
+.report-config h3,
+.available-reports h3,
+.export-section h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ======================
+   Controls / Inputs
+   ====================== */
+.config-options {
+  display: grid;
+  grid-template-columns: 1.1fr 1.1fr .8fr;
+  gap: 14px;
+  align-items: end;
+}
+.option-group { display: flex; flex-direction: column; }
+.option-group label {
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: .3px;
+}
+
+.form-select,
+.reports-container select,
+.reports-container input[type="text"] {
+  width: 100%;
+  background: var(--elev);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  appearance: none;
+}
+
+.form-select:focus,
+.reports-container select:focus,
+.reports-container input[type="text"]:focus {
+  border-color: rgba(59,130,246,.5);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.22);
+}
+
+/* ======================
+   Buttons
+   ====================== */
+.btn {
+  --btn-bg: var(--elev);
+  --btn-bd: var(--border);
+  --btn-fg: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border: 1px solid var(--btn-bd);
+  cursor: pointer;
+  transition: transform .06s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
+  user-select: none;
+}
+.btn:active { transform: translateY(1px); }
+.btn[disabled] { opacity: .6; cursor: not-allowed; }
+.btn-sm { padding: 8px 12px; font-size: 12px; border-radius: 8px; }
+
+.btn-primary {
+  --btn-bg: linear-gradient(180deg, var(--primary), var(--primary-2));
+  --btn-bd: rgba(59,130,246,.4);
+  box-shadow: 0 8px 20px rgba(37,99,235,.35), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.btn-primary:hover { background: linear-gradient(180deg, var(--primary-2), var(--primary-3)); }
+
+.btn-secondary {
+  --btn-bg: linear-gradient(180deg, #1c2a4b, #162342);
+  --btn-bd: rgba(148,163,184,.25);
+}
+.btn-secondary:hover { filter: brightness(1.06); }
+
+.btn-orange {
+  --btn-bg: linear-gradient(180deg, var(--orange), var(--orange-2));
+  --btn-bd: rgba(249,115,22,.35);
+  color: #1a1a1a;
+  font-weight: 700;
+  box-shadow: 0 10px 22px rgba(234,88,12,.32);
+}
+
+/* ======================
+   Export block
+   ====================== */
+.export-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.export-options { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ======================
+   Available report cards
+   ====================== */
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 14px;
+}
+@media (max-width: 1100px) { .reports-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 680px)  { .reports-grid { grid-template-columns: 1fr; } }
+
+.report-card {
+  padding: 16px;
+  background: linear-gradient(180deg, var(--card), var(--card-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform .12s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  position: relative;
+}
+.report-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59,130,246,.35);
+  box-shadow: 0 10px 24px rgba(0,0,0,.45);
+}
+.report-card.active {
+  box-shadow: 0 0 0 2px rgba(59,130,246,.55);
+  border-color: rgba(59,130,246,.55);
+}
+
+.report-card h4 {
+  color: var(--text);
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.report-card p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
+.report-metadata {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.report-metadata small {
+  color: var(--muted);
+  opacity: .9;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+.report-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ======================
+   History overlay
+   ====================== */
+.history-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  z-index: 60;
+  padding: 18px;
+}
+.history-panel {
+  width: min(1100px, 95vw);
+  max-height: 86vh;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--card), var(--card-2));
+  border: 1px solid var(--border);
+  box-shadow: 0 28px 80px rgba(0,0,0,.55);
+  display: flex;
+  flex-direction: column;
+}
+.history-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.history-head h3 { margin: 0; font-size: 16px; }
+
+.history-tools { display: flex; gap: 10px; align-items: center; }
+.history-search {
+  width: 280px;
+  background: var(--elev);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 10px;
+  outline: none;
+}
+.history-search:focus {
+  border-color: rgba(59,130,246,.5);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.22);
+}
+
+.reports-table-container {
+  overflow: auto;
+  padding: 0 2px 2px;
+}
+
+/* Table */
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.reports-table thead th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .25px;
+  color: var(--text-soft);
+  background: linear-gradient(180deg, #1a2544, #17223d);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+  position: sticky; top: 0; z-index: 1;
+}
+.reports-table tbody td {
+  border-top: 1px solid var(--border);
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 13px;
+}
+.reports-table tbody tr:hover { background: rgba(59,130,246,.06); }
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  border: 1px solid transparent;
+}
+.badge-success { color: #d1fae5; background: rgba(16,185,129,.15); border-color: rgba(16,185,129,.35); }
+.badge-warning { color: #fff7ed; background: rgba(245,158,11,.16); border-color: rgba(245,158,11,.35); }
+.badge-info    { color: #dbeafe; background: rgba(96,165,250,.16); border-color: rgba(96,165,250,.35); }
+.badge-error   { color: #fee2e2; background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.38); }
+.badge-secondary { color: #cbd5e1; background: rgba(148,163,184,.12); border-color: rgba(148,163,184,.28); }
+
+/* Alerts / states */
+.no-reports,
+.loading-message {
+  color: var(--muted);
+  padding: 30px;
+  text-align: center;
+}
+.error-message {
+  background: rgba(239,68,68,.15);
+  border: 1px solid rgba(239,68,68,.35);
+  color: #fecaca;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 12px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.error-message button {
+  all: unset;
+  color: #fecaca;
+  opacity: .8;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.error-message button:hover { background: rgba(255,255,255,.06); }
+
+/* Responsive */
+@media (max-width: 940px) {
+  .config-options { grid-template-columns: 1fr; }
+  .export-header { flex-direction: column; align-items: flex-start; }
+  .history-tools { flex-wrap: wrap; }
+}

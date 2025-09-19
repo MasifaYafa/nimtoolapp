@@ -1,0 +1,51 @@
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+*.log
+/media/
+staticfiles/
+.env
+.env.*
+.env.local
+.env.production
+*.pem
+
+# Migrations cache (keep actual migration files!)
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / React
+frontend/node_modules/
+frontend/.env
+frontend/.env.*
+frontend/build/
+frontend/dist/
+
+# Virtual envs
+venv/
+.venv/
+
+# Coverage / test
+htmlcov/
+.coverage*
+.pytest_cache/
+
+# --- Node / React (ignore in any subfolder) ---
+**/node_modules/
+**/.env
+**/.env.*
+
+# Optional (if you keep logs/media per app)
+logs/
+backend/logs/
+backend/media/
+backend/staticfiles/

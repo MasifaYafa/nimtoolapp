@@ -1,0 +1,235 @@
+/* ===========================
+   Dashboard.css (polished + BG image ready)
+   - Keeps your original class names
+   - Responsive, accessible, dark-mode friendly
+   =========================== */
+
+/* ---- Theme Tokens ---- */
+:root {
+  --bg: #0b1220;
+  --surface: #0f172a;
+  --surface-2: #111827;
+  --border: #1f2a44;
+
+  --text: #e5e7eb;
+  --text-muted: #b3bbc7;
+
+  --brand: #22c55e;    /* accent green */
+  --info: #3b82f6;     /* blue */
+  --warn: #f59e0b;     /* amber */
+  --danger: #ef4444;   /* red */
+  --ok: #22c55e;       /* green */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-1: 0 6px 20px rgba(0, 0, 0, 0.18);
+  --shadow-2: 0 12px 30px rgba(0, 0, 0, 0.28);
+
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f7fb;
+    --surface: #ffffff;
+    --surface-2: #f3f4f6;
+    --border: #e5e7eb;
+
+    --text: #0f172a;
+    --text-muted: #475569;
+  }
+}
+
+/* =========================================
+   Page background + image (applied via JS)
+   ========================================= */
+.dashboard-container {
+  min-height: 100vh;
+  position: relative;
+
+  /* Fallback gradient if the image isn't loaded yet */
+  background:
+    radial-gradient(1200px 700px at 10% -10%, rgba(34, 197, 94, 0.06), transparent 60%),
+    linear-gradient(135deg, var(--bg), #0a0f1a 60%);
+
+  /* The background image itself is set inline from Dashboard.js:
+     style={{ backgroundImage: `url(${dashboardBg})`, ... }} */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Soft overlay for readability on any photo */
+.dashboard-container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1200px 700px at 20% -10%, rgba(59,130,246,.15), transparent),
+    radial-gradient(900px 600px at 100% -10%, rgba(234,88,12,.12), transparent),
+    rgba(0,0,0,.35);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Keep content above the overlay */
+.dashboard-header,
+.dashboard-main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Optional header chrome (matches your dark theme) */
+.dashboard-header {
+  backdrop-filter: blur(6px);
+  background: linear-gradient(180deg, rgba(15,23,42,0.95), rgba(15,23,42,0.75));
+  border-bottom: 1px solid var(--border);
+}
+
+/* Simple text helpers used in JS */
+.h1 { margin: 0; color: var(--text); font-weight: 800; letter-spacing: .2px; }
+.muted { color: var(--text-muted); }
+
+/* ========== Loading State ========== */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  gap: var(--space-3);
+}
+
+/* Optional spinner element:
+   <div class="spinner" aria-hidden="true"></div> */
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--brand);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========== Error Message ========== */
+.error-message {
+  background: linear-gradient(180deg, #2a1010, #1f0c0c);
+  color: #ffd7d7;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.12);
+  margin-bottom: 20px;
+  text-align: left;
+  line-height: 1.5;
+}
+
+/* ========== Device Types Grid ========== */
+.device-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+/* Card */
+.device-type-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.device-type-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Name */
+.device-type-name {
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+
+/* Count Pill */
+.device-type-count {
+  background: linear-gradient(135deg, var(--info), #60a5fa);
+  color: #06121e;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid rgba(6, 18, 30, 0.1);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset;
+  letter-spacing: 0.3px;
+}
+
+/* ========== Activity Status ========== */
+.activity-status {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Online */
+.activity-status.online {
+  color: #0e2e1a;
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+/* Offline */
+.activity-status.offline {
+  color: #3a0a0a;
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* You can add small dot indicators inside status if desired:
+   <span class="dot"></span> */
+.activity-status .dot {
+  width: 8px; height: 8px; border-radius: 999px; display: inline-block;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+}
+
+/* ========== Subtle Utilities (optional) ========== */
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: var(--space-3);
+}
+
+.helper-muted { color: var(--text-muted); }
+
+/* ========== Responsive Tweaks ========== */
+@media (max-width: 768px) {
+  .loading-container { padding: 36px; }
+  .device-type-item { padding: var(--space-3); }
+}
