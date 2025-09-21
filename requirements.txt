@@ -1,1 +1,32 @@
 -r backend/requirements.txt
+# --- Django core / server ---
+Django==5.2.6
+gunicorn==23.0.0
+whitenoise==6.11.0
+dj-database-url==3.0.1
+python-decouple==3.8
+
+# --- REST API / Auth / CORS ---
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.6.0
+django-filter==24.3
+django-extensions==3.2.3
+
+# --- Database (PostgreSQL) ---
+psycopg2-binary==2.9.9
+
+# --- Background tasks ---
+celery==5.3.6
+redis==5.0.4
+
+# --- Networking utilities used by your apps ---
+ping3==4.0.4
+pysnmp==4.4.12
+requests==2.32.3
+
+# --- Reporting / exports ---
+reportlab==4.2.5
+openpyxl==3.1.5
+pandas==2.2.2
+PyYAML==6.0.1
