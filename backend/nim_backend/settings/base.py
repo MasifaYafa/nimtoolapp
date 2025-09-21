@@ -3,7 +3,6 @@
 Django base settings for nim_backend project.
 Common settings shared across all environments.
 """
-
 from pathlib import Path
 import os
 from decouple import config
@@ -36,7 +35,6 @@ DJANGO_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
-
 THIRD_PARTY_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
@@ -44,7 +42,6 @@ THIRD_PARTY_APPS = [
     'django_extensions',
     'django_filters',
 ]
-
 LOCAL_APPS = [
     'apps.authentication',
     'apps.devices',
@@ -55,7 +52,6 @@ LOCAL_APPS = [
     'apps.troubleshoot',
     'apps.app_settings',
 ]
-
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # ----------------------------
@@ -77,7 +73,7 @@ ROOT_URLCONF = 'nim_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [BASE_DIR / 'templates'],  # React build dir may be injected below
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -94,7 +90,6 @@ WSGI_APPLICATION = 'nim_backend.wsgi.application'
 
 # ----------------------------
 # Database
-# - Prefer DATABASE_URL when provided (Railway/Heroku style), else explicit env vars
 # ----------------------------
 DATABASES = {
     'default': {
@@ -106,10 +101,8 @@ DATABASES = {
         'PORT': config('DB_PORT', default='5432'),
     }
 }
-
 _db_url = config('DATABASE_URL', default=None)
 if _db_url:
-    # Let dj_database_url parse the URL; allow opt-in SSL and connection pooling from env.
     DATABASES['default'] = dj_database_url.parse(
         _db_url,
         conn_max_age=config('DB_CONN_MAX_AGE', default=60, cast=int),
@@ -135,7 +128,7 @@ USE_I18N = True
 USE_TZ = True
 
 # ----------------------------
-# Static / Media (WhiteNoise is configured in production.py via STORAGES)
+# Static / Media (+ React build wiring)
 # ----------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
@@ -143,6 +136,14 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Inject React build if present, so index.html + build/static are collected/served
+FRONTEND_BUILD_DIR = BASE_DIR / 'frontend' / 'build'
+if FRONTEND_BUILD_DIR.exists():
+    TEMPLATES[0]['DIRS'].insert(0, FRONTEND_BUILD_DIR)  # serve index.html
+    build_static = FRONTEND_BUILD_DIR / 'static'
+    if build_static.exists():
+        STATICFILES_DIRS.append(build_static)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -165,7 +166,6 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
 }
-# JSON only by default; enable Browsable API if you want via env
 if config('DRF_BROWSABLE_API', default=False, cast=bool):
     REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = [
         'rest_framework.renderers.JSONRenderer',
@@ -195,19 +195,13 @@ SIMPLE_JWT = {
 
 # ----------------------------
 # CORS / CSRF
-# - Configure from env for flexibility across dev/staging/prod
 # ----------------------------
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool)
-CORS_ALLOWED_ORIGINS = csv(
-    'CORS_ALLOWED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000'
-)
+CORS_ALLOWED_ORIGINS = csv('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000')
 CORS_ALLOW_CREDENTIALS = True
 
-# CSRF trusted origins must include scheme; allow env override
 def _with_scheme(origin: str) -> str:
     return origin if origin.startswith(('http://', 'https://')) else f'https://{origin}'
-
 CSRF_TRUSTED_ORIGINS = [
     _with_scheme(o) for o in csv('CSRF_TRUSTED_ORIGINS', default='')
 ] or [_with_scheme(o) for o in CORS_ALLOWED_ORIGINS]
@@ -222,15 +216,9 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
-CELERY_BEAT_SCHEDULE = {
-    'monitor-devices': {
-        'task': 'apps.devices.tasks.monitor_all_devices',
-        'schedule': 30.0,
-    },
-    'cleanup-old-alerts': {
-        'task': 'apps.alerts.tasks.cleanup_old_alerts',
-        'schedule': 3600.0,
-    },
+CELERY_BET_SCHEDULE = {
+    'monitor-devices': {'task': 'apps.devices.tasks.monitor_all_devices', 'schedule': 30.0},
+    'cleanup-old-alerts': {'task': 'apps.alerts.tasks.cleanup_old_alerts', 'schedule': 3600.0},
 }
 
 # ----------------------------
@@ -281,8 +269,8 @@ LOGGING = {
 # NIM-Tool custom
 # ----------------------------
 NIM_TOOL_SETTINGS = {
-    'DEFAULT_PING_INTERVAL': 30,  # seconds
-    'DEFAULT_SNMP_TIMEOUT': 10,   # seconds
+    'DEFAULT_PING_INTERVAL': 30,
+    'DEFAULT_SNMP_TIMEOUT': 10,
     'DEFAULT_SNMP_RETRIES': 3,
     'MAX_DEVICES_PER_USER': 1000,
     'ALERT_RETENTION_DAYS': 90,
@@ -291,7 +279,7 @@ NIM_TOOL_SETTINGS = {
     'GOOGLE_MAPS_API_KEY': config('GOOGLE_MAPS_API_KEY', default=''),
 }
 
-# Security headers (base defaults; stricter flags enabled in production.py)
+# Security headers
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'

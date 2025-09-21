@@ -1,14 +1,19 @@
 ﻿#!/usr/bin/env bash
 set -euxo pipefail
 
+# --- Build React (production) ---
+npm ci --prefix frontend
+npm run build --prefix frontend
+
+# --- Django steps ---
 cd backend
 
-PY=${PYTHON_BIN:-$(command -v python3 || command -v python || true)}
-if [ -z "${PY:-}" ]; then
-  echo "❌ Python not found in PATH" >&2
-  exit 1
+# Prefer Railway's venv python; fall back to system python3/python
+PY=${PYTHON_BIN:-/app/.venv/bin/python}
+if [ ! -x "$PY" ]; then
+  PY=$(command -v python3 || command -v python)
 fi
-
+echo "✅ Using Python at: $PY"
 "$PY" --version
 
 "$PY" manage.py migrate --noinput

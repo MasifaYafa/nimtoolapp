@@ -8,8 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-x7(v$-g!kyh_e36zhek)@x+qlllt(z(2n)wv$1ld&@^_r)__u+'
 DEBUG = True
 ALLOWED_HOSTS = []
-# settings.py
-#ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -33,7 +32,6 @@ INSTALLED_APPS = [
     'apps.reports',
     'apps.troubleshoot',
     'apps.app_settings',  # Add the new app
-    #'apps.app_settings.apps.AppSettingsConfig',
 ]
 
 MIDDLEWARE = [
