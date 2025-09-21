@@ -1,24 +1,27 @@
 ﻿#!/usr/bin/env bash
 set -euxo pipefail
 
-# --- Build React (production) ---
-npm ci --prefix frontend
-npm run build --prefix frontend
+# Always run from the repo root
+cd "$(dirname "$0")"
 
-# --- Django steps ---
+# Backend lives here
 cd backend
 
-# Prefer Railway's venv python; fall back to system python3/python
-PY=${PYTHON_BIN:-/app/.venv/bin/python}
-if [ ! -x "$PY" ]; then
-  PY=$(command -v python3 || command -v python)
+# Prefer python3, fallback to python
+PY=${PYTHON_BIN:-$(command -v python3 || command -v python || true)}
+if [ -z "${PY:-}" ]; then
+  echo "❌ Python not found in PATH" >&2
+  exit 1
 fi
+
 echo "✅ Using Python at: $PY"
 "$PY" --version
 
+# Run migrations & collect static
 "$PY" manage.py migrate --noinput
 "$PY" manage.py collectstatic --noinput
 
+# Start Gunicorn
 exec gunicorn nim_backend.wsgi:application \
   --bind 0.0.0.0:${PORT:-8000} \
   --workers ${GUNICORN_WORKERS:-3} \
