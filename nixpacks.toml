@@ -1,0 +1,12 @@
+# nixpacks.toml (at repo root)
+[phases.setup]
+# ensure python is present in the container
+nixPkgs = ["python311", "gcc"]
+
+[phases.install]
+# install your root requirements (which includes backend/requirements.txt)
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+# how to start the app
+cmd = "bash ./start.sh"
