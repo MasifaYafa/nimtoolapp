@@ -2,17 +2,27 @@
 """
 Main URL configuration for nim_backend project.
 """
+
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
+from django.http import JsonResponse
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView, TokenVerifyView
 )
 
+def health(_request):
+    return JsonResponse({"status": "ok"})
+
 urlpatterns = [
+    # Health & landing
+    path('health/', health, name='health'),
+    path('', TemplateView.as_view(template_name='index.html'), name='home'),
+
+    # Admin
     path('admin/', admin.site.urls),
 
     # Auth (your app + JWT endpoints)
@@ -29,12 +39,12 @@ urlpatterns = [
     path('api/v1/app_settings/', include('apps.app_settings.urls')),
 ]
 
-# Serve media/static in development
+# Static/media in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-# SPA fallback: send any non-API, non-admin route to the React index.html
+# SPA fallback: any non-API, non-admin route serves index.html
 urlpatterns += [
     re_path(r'^(?!api/|admin/).*$', TemplateView.as_view(template_name='index.html'), name='spa'),
 ]
