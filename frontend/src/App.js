@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// frontend/src/App.js
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from 'react-router-dom';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -9,67 +16,157 @@ import Topology from './pages/Topology';
 import Configuration from './pages/Configuration';
 import Troubleshoot from './pages/Troubleshoot';
 import Reports from './pages/Reports';
-import AppSettings from './pages/AppSettings'; // ✅ renamed import
+import AppSettings from './pages/AppSettings';
 import Header from './components/common/Header';
 
 import './styles/globals.css';
 import './App.css';
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+const ACCESS_KEY = 'accessToken';
+const REFRESH_KEY = 'refreshToken';
 
-  // Check if user is already logged in when app starts
+function useAuthState() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [booting, setBooting] = useState(true);
+
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      setIsAuthenticated(true);
-    }
-    setLoading(false);
+    // Align with api.js storage keys
+    const access = localStorage.getItem(ACCESS_KEY);
+    const refresh = localStorage.getItem(REFRESH_KEY);
+    setIsAuthenticated(Boolean(access && refresh));
+    setBooting(false);
   }, []);
 
-  const handleLogin = () => {
+  const login = (tokens) => {
+    // Allow either your Login page to call with tokens,
+    // or rely on api.js having already saved them.
+    if (tokens?.access) localStorage.setItem(ACCESS_KEY, tokens.access);
+    if (tokens?.refresh) localStorage.setItem(REFRESH_KEY, tokens.refresh);
     setIsAuthenticated(true);
+    // send to dashboard
+    window.location.replace('/dashboard');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const logout = () => {
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     setIsAuthenticated(false);
+    window.location.replace('/');
   };
 
-  if (loading) {
+  return useMemo(
+    () => ({ isAuthenticated, booting, login, logout }),
+    [isAuthenticated, booting]
+  );
+}
+
+function ProtectedRoute({ authed, children }) {
+  const location = useLocation();
+  if (!authed) {
+    return <Navigate to="/" replace state={{ from: location }} />;
+  }
+  return children;
+}
+
+export default function App() {
+  const auth = useAuthState();
+
+  if (auth.booting) {
     return (
       <div className="loading-container">
-        <div className="loading-spinner"></div>
+        <div className="loading-spinner" />
         <p>Loading NIM-Tool...</p>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
-  }
-
   return (
-    <Router>
-      <div className="App">
-        <Header onLogout={handleLogout} />
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Dashboard onLogout={handleLogout} />} />
-            <Route path="/devices" element={<Devices />} />
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/topology" element={<Topology />} />
-            <Route path="/configuration" element={<Configuration />} />
-            <Route path="/troubleshoot" element={<Troubleshoot />} />
-            <Route path="/reports" element={<Reports />} />
-            {/* ✅ Your requested update */}
-            <Route path="/settings" element={<AppSettings />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <BrowserRouter>
+      {/* Hide header on the login page */}
+      {window.location.pathname !== '/' && <Header onLogout={auth.logout} />}
+
+      <main className="main-content">
+        <Routes>
+          {/* Landing page = Login */}
+          <Route path="/" element={<Login onLogin={auth.login} />} />
+
+          {/* Protected app routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute authed={auth.isAuthenticated}>
+                <Dashboard onLogout={auth.logout} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/devices"
+            element={
+              <ProtectedRoute authed={auth.isAuthenticated}>
+                <Devices />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/alerts"
+            element={
+              <ProtectedRoute authed={auth.isAuthenticated}>
+                <Alerts />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/topology"
+            element={
+              <ProtectedRoute authed={auth.isAuthenticated}>
+                <Topology />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/configuration"
+            element={
+              <ProtectedRoute authed={auth.isAuthenticated}>
+                <Configuration />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/troubleshoot"
+            element={
+              <ProtectedRoute authed={auth.isAuthenticated}>
+                <Troubleshoot />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute authed={auth.isAuthenticated}>
+                <Reports />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute authed={auth.isAuthenticated}>
+                <AppSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch-all → Login */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </BrowserRouter>
   );
 }
-
-export default App;

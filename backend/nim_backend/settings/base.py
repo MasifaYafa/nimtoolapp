@@ -8,11 +8,13 @@ from pathlib import Path
 import os
 from decouple import config
 import dj_database_url
+from datetime import timedelta
 
 # ----------------------------
 # Paths / Core
 # ----------------------------
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # .../backend
+ROOT_DIR = BASE_DIR.parent                                # repo root
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
@@ -72,12 +74,12 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'nim_backend.urls'
 
 # ----------------------------
-# Templates (make sure backend/templates is searched)
+# Templates (backend/templates + optional React build)
 # ----------------------------
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # index.html lives here
+        'DIRS': [BASE_DIR / 'templates'],  # fallback index.html lives here (optional)
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -114,16 +116,6 @@ if _db_url:
     )
 
 # ----------------------------
-# Password validation
-# ----------------------------
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
-
-# ----------------------------
 # I18N / TZ
 # ----------------------------
 LANGUAGE_CODE = 'en-us'
@@ -132,26 +124,21 @@ USE_I18N = True
 USE_TZ = True
 
 # ----------------------------
-# Static / Media (+ optional React build wiring)
+# Static / Media (+ React build wiring)
 # ----------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Only include project /static if it exists (prevents W004 warnings)
-STATICFILES_DIRS = []
-_project_static = BASE_DIR / 'static'
-if _project_static.exists():
-    STATICFILES_DIRS.append(_project_static)
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# If frontend/build exists, serve its index.html and collect its static
-FRONTEND_BUILD_DIR = BASE_DIR / 'frontend' / 'build'
+# React build directory (…/frontend/build)
+FRONTEND_BUILD_DIR = ROOT_DIR / 'frontend' / 'build'
 if FRONTEND_BUILD_DIR.exists():
-    # index.html
+    # Serve the SPA's index.html
     TEMPLATES[0]['DIRS'].insert(0, FRONTEND_BUILD_DIR)
-    # build/static
+    # Let collectstatic grab the built assets
     build_static = FRONTEND_BUILD_DIR / 'static'
     if build_static.exists():
         STATICFILES_DIRS.append(build_static)
@@ -188,7 +175,6 @@ else:
 # ----------------------------
 # JWT
 # ----------------------------
-from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -227,7 +213,6 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
-# (fixed name) CELERY_BEAT_SCHEDULE
 CELERY_BEAT_SCHEDULE = {
     'monitor-devices': {'task': 'apps.devices.tasks.monitor_all_devices', 'schedule': 30.0},
     'cleanup-old-alerts': {'task': 'apps.alerts.tasks.cleanup_old_alerts', 'schedule': 3600.0},
