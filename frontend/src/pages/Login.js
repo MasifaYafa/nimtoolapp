@@ -3,12 +3,7 @@ import React, { useState } from 'react';
 import { api, tokenManager } from '../services/api';
 import './Login.css';
 
-/**
- * >>> PLACE YOUR IMAGE HERE <<<
- *    frontend/src/assets/login-bg.jpg
- *
- * If you rename or move it, update the path below accordingly.
- */
+// Background image (place at: frontend/src/assets/login-bg.jpg)
 import loginBg from '../assets/login-bg.jpg';
 
 const Login = ({ onLogin }) => {
@@ -16,7 +11,6 @@ const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Inline background style (lets Webpack bundle the image safely)
   const BG_STYLE = {
     backgroundImage: `url(${loginBg})`,
     backgroundSize: 'cover',
@@ -25,7 +19,7 @@ const Login = ({ onLogin }) => {
   };
 
   const handleChange = (e) =>
-    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,18 +27,27 @@ const Login = ({ onLogin }) => {
     setError('');
 
     try {
-      const response = await api.auth.login({
-        username: formData.username,
+      const res = await api.auth.login({
+        username: formData.username.trim(),
         password: formData.password,
       });
 
-      if (response && response.access) {
-        tokenManager.setTokens(response.access, response.refresh);
+      // Handle both shapes: { access, refresh } OR { tokens: { access, refresh } }
+      const access = res?.access ?? res?.tokens?.access ?? null;
+      const refresh = res?.refresh ?? res?.tokens?.refresh ?? null;
+
+      if (!access || !refresh) {
+        throw new Error('Login succeeded but tokens were not returned.');
       }
-      onLogin && onLogin();
+
+      // Persist and notify app
+      tokenManager.setTokens(access, refresh);
+      if (onLogin) onLogin({ access, refresh });
     } catch (err) {
       console.error('Login failed:', err);
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(
+        err?.message || 'Login failed. Please check your credentials and try again.'
+      );
     } finally {
       setLoading(false);
     }
