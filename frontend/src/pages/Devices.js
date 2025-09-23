@@ -2,16 +2,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api, tokenManager } from '../services/api';
 import './Devices.css';
-
-/**
- * >>> PLACE YOUR IMAGE HERE <<<
- *    frontend/src/assets/devices-bg.jpg
- *
- * If you rename or move it, update the path below accordingly.
- */
 import devicesBg from '../assets/devices-bg.jpg';
 
-// Background image style (lets bundler include the asset)
+// Background image style
 const BG_STYLE = {
   backgroundImage: `url(${devicesBg})`,
   backgroundSize: 'cover',
@@ -20,9 +13,8 @@ const BG_STYLE = {
 };
 
 /* -------------------------------------------
-   Helpers for Device Types (icons + mapping)
+   Icons for device-type-friendly names
 -------------------------------------------- */
-// Simple icon palette by friendly name keywords
 const TYPE_ICON_BY_NAME = [
   { match: /router|cpe|lte|modem/i, icon: '🌐' },
   { match: /switch/i,               icon: '🔀' },
@@ -30,14 +22,10 @@ const TYPE_ICON_BY_NAME = [
   { match: /firewall/i,             icon: '🔥' },
   { match: /server/i,               icon: '🖥️' },
   { match: /printer/i,              icon: '🖨️' },
-  { match: /ups/i,                  icon: '🔋' }
+  { match: /ups/i,                  icon: '🔋' },
 ];
-
-// Return an icon for a given type name
-function iconForTypeName(name = '') {
-  const entry = TYPE_ICON_BY_NAME.find(({ match }) => match.test(name));
-  return entry ? entry.icon : '📦';
-}
+const iconForTypeName = (name = '') =>
+  (TYPE_ICON_BY_NAME.find(({ match }) => match.test(name))?.icon) || '📦';
 
 /* ===========================================
    Component
@@ -45,8 +33,8 @@ function iconForTypeName(name = '') {
 const Devices = () => {
   // Lists & meta
   const [devices, setDevices] = useState([]);
-  const [deviceTypes, setDeviceTypes] = useState([]); // fetched from API
-  const [typeById, setTypeById] = useState({});       // { [id]: {id, name, icon} }
+  const [deviceTypes, setDeviceTypes] = useState([]); // [{id,name,icon}]
+  const [typeById, setTypeById] = useState({});       // { [id]: meta }
 
   // Stats
   const [statistics, setStatistics] = useState({
@@ -58,7 +46,9 @@ const Devices = () => {
 
   // UI state
   const [loading, setLoading] = useState(true);
+  const [typesLoading, setTypesLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [typesError, setTypesError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -81,54 +71,114 @@ const Devices = () => {
   });
 
   /* -------------------------------------------
-     Loaders
+     Device Types loader (robust)
   -------------------------------------------- */
+  const authFetch = async (url) => {
+    const token = tokenManager.getAccess?.() || localStorage.getItem('accessToken');
+    const res = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
+  };
+
+  const normalizeTypes = (raw) => {
+    const list = Array.isArray(raw) ? raw : (raw?.results || []);
+    return list.map((t) => {
+      const id = Number(t.id ?? t.pk);
+      const name = String(t.name ?? t.label ?? t.title ?? 'Unknown');
+      return { id, name, icon: iconForTypeName(name) };
+    }).filter(t => Number.isFinite(t.id) && t.name);
+  };
+
   const loadDeviceTypes = useCallback(async () => {
+    setTypesLoading(true);
+    setTypesError(null);
     try {
-      // Pull from API (no assumptions on IDs!)
-      const list = await api.devices.getTypes?.() || (await api.getDeviceTypes?.()) || [];
-      // Normalize expected shape: [{id, name}]
-      const normalized = (list.results || list).map(t => ({
-        id: Number(t.id),
-        name: String(t.name || t.label || t.title || 'Unknown'),
-        icon: iconForTypeName(t.name || ''),
-      }));
-      setDeviceTypes(normalized);
+      // 1) If your api.js already exposes a typed helper, try that first
+      if (api.devices?.types) {
+        const data = await api.devices.types();
+        const normalized = normalizeTypes(data);
+        if (normalized.length) {
+          setDeviceTypes(normalized);
+          const m = {};
+          normalized.forEach(t => (m[t.id] = t));
+          setTypeById(m);
+          // Ensure form has a valid value or blank
+          setFormData(prev => ({
+            ...prev,
+            device_type: prev.device_type && m[Number(prev.device_type)]
+              ? Number(prev.device_type) : ''
+          }));
+          setTypesLoading(false);
+          return;
+        }
+      }
 
-      // Map by id for fast lookup
-      const byId = {};
-      normalized.forEach(t => { byId[t.id] = t; });
-      setTypeById(byId);
+      // 2) Try common REST endpoints (same-origin; Django serves API)
+      const candidates = [
+        '/api/v1/devices/types/',
+        '/api/v1/devices/device-types/',
+        '/api/v1/device-types/',
+        '/api/v1/devicetypes/',
+      ];
 
-      // If current form has a type value not in the list, clear it
-      setFormData(prev => ({
-        ...prev,
-        device_type: prev.device_type && byId[Number(prev.device_type)]
-          ? Number(prev.device_type)
-          : '',
-      }));
+      let success = false;
+      for (const path of candidates) {
+        try {
+          const data = await authFetch(path);
+          const normalized = normalizeTypes(data);
+          if (normalized.length) {
+            setDeviceTypes(normalized);
+            const m = {};
+            normalized.forEach(t => (m[t.id] = t));
+            setTypeById(m);
+            setFormData(prev => ({
+              ...prev,
+              device_type: prev.device_type && m[Number(prev.device_type)]
+                ? Number(prev.device_type) : ''
+            }));
+            success = true;
+            break;
+          }
+        } catch {
+          // try next
+        }
+      }
 
+      if (!success) {
+        setDeviceTypes([]);
+        setTypeById({});
+        setTypesError(
+          'No device types found. Add Device Types in the admin or seed them, then click Retry.'
+        );
+      }
     } catch (err) {
       console.error('❌ Failed to load device types:', err);
-      setError('Could not load device types. Please refresh.');
+      setTypesError('Could not load device types. Click Retry.');
+      setDeviceTypes([]);
+      setTypeById({});
+    } finally {
+      setTypesLoading(false);
     }
   }, []);
 
+  /* -------------------------------------------
+     Devices & stats
+  -------------------------------------------- */
   const loadDevices = useCallback(async () => {
     try {
       setLoading(true);
-
-      if (!tokenManager.isLoggedIn()) {
-        // go to login page if not authenticated
+      if (!tokenManager.isLoggedIn?.() && !localStorage.getItem('accessToken')) {
         window.location.replace('/');
         return;
       }
-
       const response = await api.devices.list();
-      const items = Array.isArray(response)
-        ? response
-        : (response?.results || []);
-
+      const items = Array.isArray(response) ? response : (response?.results || []);
       setDevices(items);
       setError(null);
     } catch (err) {
@@ -141,13 +191,11 @@ const Devices = () => {
 
   const loadStatistics = useCallback(async () => {
     try {
-      if (!tokenManager.isLoggedIn()) return;
       const stats = await api.devices.statistics();
       if (stats) {
         setStatistics(stats);
         return;
       }
-      // Fallback computed stats if API didn’t return data
       throw new Error('No stats');
     } catch {
       setStatistics({
@@ -165,7 +213,7 @@ const Devices = () => {
     loadDevices();
   }, [loadDeviceTypes, loadDevices]);
 
-  // Reload stats when devices change
+  // Update stats when devices change
   useEffect(() => {
     if (devices.length) loadStatistics();
   }, [devices, loadStatistics]);
@@ -175,16 +223,10 @@ const Devices = () => {
   -------------------------------------------- */
   const createDevice = async (deviceData) => {
     try {
-      // Ensure numeric device_type
-      const payload = {
-        ...deviceData,
-        device_type: Number(deviceData.device_type),
-      };
-
+      const payload = { ...deviceData, device_type: Number(deviceData.device_type) };
       if (!typeById[payload.device_type]) {
         throw new Error('Invalid device type selected.');
       }
-
       await api.devices.create(payload);
       await loadDevices();
       await loadStatistics();
@@ -194,7 +236,7 @@ const Devices = () => {
     } catch (err) {
       console.error('❌ Error creating device:', err);
       if (String(err.message).match(/Invalid pk|device_type|incorrect type/i)) {
-        setError('Invalid device type selected. Please refresh and try again.');
+        setError('Invalid device type selected. Click the field and pick a type again.');
       } else if (String(err.message).match(/unique|ip_address/i)) {
         setError('A device with this IP already exists. Use a different IP.');
       } else {
@@ -205,15 +247,10 @@ const Devices = () => {
 
   const updateDevice = async (id, deviceData) => {
     try {
-      const payload = {
-        ...deviceData,
-        device_type: Number(deviceData.device_type),
-      };
-
+      const payload = { ...deviceData, device_type: Number(deviceData.device_type) };
       if (!typeById[payload.device_type]) {
         throw new Error('Invalid device type selected.');
       }
-
       await api.devices.update(id, payload);
       await loadDevices();
       await loadStatistics();
@@ -246,16 +283,14 @@ const Devices = () => {
   };
 
   /* -------------------------------------------
-     Actions: Ping / Connectivity
+     Actions
   -------------------------------------------- */
   const pingDevice = async (device) => {
     const deviceId = device.id;
     try {
       setPingLoading(prev => ({ ...prev, [deviceId]: true }));
       setError(null);
-
       const result = await api.devices.ping(deviceId);
-
       if (result?.success) {
         setError(`✅ ${device.name}: Online (${result.response_time}ms)`);
         setTimeout(() => setError(null), 3000);
@@ -263,7 +298,6 @@ const Devices = () => {
         setError(`❌ ${device.name}: ${result?.message || 'Ping failed'}`);
         setTimeout(() => setError(null), 5000);
       }
-
       await loadDevices();
       await loadStatistics();
     } catch (err) {
@@ -279,15 +313,12 @@ const Devices = () => {
     try {
       setPingAllLoading(true);
       setError(null);
-
       const result = await api.devices.pingAll();
-
       if (result?.summary) {
         const { summary } = result;
         setError(`📊 Ping All: ${summary.online}/${summary.total} online (${summary.success_rate}% success)`);
         setTimeout(() => setError(null), 5000);
       }
-
       await loadDevices();
       await loadStatistics();
     } catch (err) {
@@ -318,7 +349,7 @@ const Devices = () => {
   };
 
   /* -------------------------------------------
-     Form & Modal handlers
+     Form & Modal
   -------------------------------------------- */
   const resetForm = () => {
     setFormData({
@@ -343,23 +374,17 @@ const Devices = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!formData.name || !formData.ip_address || !formData.device_type) {
       setError('Please fill Name, IP Address and Device Type.');
       return;
     }
-
     const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
     if (!ipRegex.test(formData.ip_address)) {
       setError('Please enter a valid IP address (e.g., 192.168.1.100).');
       return;
     }
-
-    if (selectedDevice) {
-      await updateDevice(selectedDevice.id, formData);
-    } else {
-      await createDevice(formData);
-    }
+    if (selectedDevice) await updateDevice(selectedDevice.id, formData);
+    else await createDevice(formData);
   };
 
   const openAddModal = () => {
@@ -369,12 +394,9 @@ const Devices = () => {
 
   const openEditModal = (device) => {
     setSelectedDevice(device);
-
-    // device.device_type could be an id or nested object depending on backend serializer.
     let dt = device.device_type;
     if (dt && typeof dt === 'object') dt = dt.id;
     if (typeof dt !== 'number') dt = Number(dt) || '';
-
     setFormData({
       name: device.name || '',
       description: device.description || '',
@@ -385,7 +407,6 @@ const Devices = () => {
       location: device.location || '',
       monitoring_enabled: device.monitoring_enabled !== false,
     });
-
     setShowEditModal(true);
   };
 
@@ -407,11 +428,11 @@ const Devices = () => {
   -------------------------------------------- */
   const filteredDevices = useMemo(() => {
     return devices.filter(device => {
+      const q = searchTerm.toLowerCase();
       const matchesSearch =
-        device.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        device.name?.toLowerCase().includes(q) ||
         device.ip_address?.includes(searchTerm) ||
-        device.vendor?.toLowerCase().includes(searchTerm.toLowerCase());
-
+        device.vendor?.toLowerCase().includes(q);
       const matchesStatus = filterStatus === 'all' || device.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
@@ -439,7 +460,6 @@ const Devices = () => {
   };
 
   const typeDisplay = (device) => {
-    // Prefer backend-provided display if available
     if (device.device_type_name || device.device_type_icon) {
       return (
         <span className="device-type">
@@ -447,14 +467,13 @@ const Devices = () => {
         </span>
       );
     }
-    // Otherwise, lookup by id
     let id = device.device_type;
     if (id && typeof id === 'object') id = id.id;
     id = Number(id);
     const meta = typeById[id];
     return (
       <span className="device-type">
-        {(meta && meta.icon) || '📦'} {(meta && meta.name) || 'Unknown'}
+        {(meta?.icon) || '📦'} {(meta?.name) || 'Unknown'}
       </span>
     );
   };
@@ -526,40 +545,32 @@ const Devices = () => {
             >
               {pingAllLoading ? '🔄 Pinging...' : '📡 Ping All'}
             </button>
-            <button
-              className="btn btn-info"
-              onClick={testConnectivity}
-              title="Test internet connectivity"
-            >
+            <button className="btn btn-info" onClick={testConnectivity} title="Test internet connectivity">
               🌐 Test Network
             </button>
-            <button
-              className="btn btn-primary add-device-btn"
-              onClick={openAddModal}
-            >
+            <button className="btn btn-primary add-device-btn" onClick={openAddModal}>
               + Add Device
             </button>
           </div>
         </div>
 
+        {/* If device types failed to load, show a small warning near the top */}
+        {typesError && (
+          <div className="error-message">
+            <span className="error-icon">⚠️</span>
+            <span>{typesError}</span>
+            <button className="btn btn-small" onClick={loadDeviceTypes} style={{ marginLeft: 8 }}>
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="device-stats">
-          <div className="stat-item">
-            <span className="stat-label">Total Devices</span>
-            <span className="stat-value">{statistics.total_devices}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Online</span>
-            <span className="stat-value online">{statistics.online_devices}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Offline</span>
-            <span className="stat-value offline">{statistics.offline_devices}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Warning</span>
-            <span className="stat-value warning">{statistics.warning_devices}</span>
-          </div>
+          <div className="stat-item"><span className="stat-label">Total Devices</span><span className="stat-value">{statistics.total_devices}</span></div>
+          <div className="stat-item"><span className="stat-label">Online</span><span className="stat-value online">{statistics.online_devices}</span></div>
+          <div className="stat-item"><span className="stat-label">Offline</span><span className="stat-value offline">{statistics.offline_devices}</span></div>
+          <div className="stat-item"><span className="stat-label">Warning</span><span className="stat-value warning">{statistics.warning_devices}</span></div>
         </div>
 
         {/* Table */}
@@ -596,35 +607,16 @@ const Devices = () => {
                         {device.status_display || device.status}
                       </span>
                     </td>
-                    <td className="response-time">
-                      {device.response_time ? `${device.response_time}ms` : '-'}
-                    </td>
+                    <td className="response-time">{device.response_time ? `${device.response_time}ms` : '-'}</td>
                     <td>{device.vendor || '-'}</td>
                     <td>{formatLastSeen(device.last_seen)}</td>
                     <td>
                       <div className="action-buttons">
-                        <button
-                          className="btn-small btn-info"
-                          onClick={() => openEditModal(device)}
-                          title="Edit device"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className={`btn-small btn-warning ${pingLoading[device.id] ? 'loading' : ''}`}
-                          onClick={() => pingDevice(device)}
-                          disabled={pingLoading[device.id]}
-                          title="Ping device"
-                        >
+                        <button className="btn-small btn-info" onClick={() => openEditModal(device)} title="Edit device">Edit</button>
+                        <button className={`btn-small btn-warning ${pingLoading[device.id] ? 'loading' : ''}`} onClick={() => pingDevice(device)} disabled={pingLoading[device.id]} title="Ping device">
                           {pingLoading[device.id] ? '🔄' : '📡'} Ping
                         </button>
-                        <button
-                          className="btn-small btn-danger"
-                          onClick={() => openDeleteModal(device)}
-                          title="Delete device"
-                        >
-                          Delete
-                        </button>
+                        <button className="btn-small btn-danger" onClick={() => openDeleteModal(device)} title="Delete device">Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -648,54 +640,31 @@ const Devices = () => {
                   <div className="form-row">
                     <div className="form-group">
                       <label>Device Name *</label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g., AP-Office-Main"
-                      />
+                      <input type="text" name="name" value={formData.name} onChange={handleInputChange} required placeholder="e.g., AP-Office-Main" />
                     </div>
                     <div className="form-group">
                       <label>IP Address *</label>
-                      <input
-                        type="text"
-                        name="ip_address"
-                        value={formData.ip_address}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g., 192.168.1.50"
-                        pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
-                      />
+                      <input type="text" name="ip_address" value={formData.ip_address} onChange={handleInputChange} required placeholder="e.g., 192.168.1.50" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" />
                     </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group">
                       <label>Device Type *</label>
-                      <select
-                        name="device_type"
-                        value={formData.device_type}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="">Choose device type...</option>
+                      <select name="device_type" value={formData.device_type} onChange={handleInputChange} required disabled={typesLoading || deviceTypes.length === 0}>
+                        <option value="">{typesLoading ? 'Loading types…' : 'Choose device type...'}</option>
                         {deviceTypes.map(type => (
                           <option key={type.id} value={type.id}>
                             {type.icon ? `${type.icon} ` : ''}{type.name}
                           </option>
                         ))}
                       </select>
+                      {(!typesLoading && deviceTypes.length === 0) && (
+                        <small className="form-help">No types available. Open Django Admin → “Device Types” and add some, then click Retry above.</small>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Location</label>
-                      <input
-                        type="text"
-                        name="location"
-                        value={formData.location}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Main Office, Building A"
-                      />
+                      <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="e.g., Main Office, Building A" />
                     </div>
                   </div>
                 </div>
@@ -705,23 +674,11 @@ const Devices = () => {
                   <div className="form-row">
                     <div className="form-group">
                       <label>Vendor</label>
-                      <input
-                        type="text"
-                        name="vendor"
-                        value={formData.vendor}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Ubiquiti, Cisco, TP-Link"
-                      />
+                      <input type="text" name="vendor" value={formData.vendor} onChange={handleInputChange} placeholder="e.g., Ubiquiti, Cisco, TP-Link" />
                     </div>
                     <div className="form-group">
                       <label>Model</label>
-                      <input
-                        type="text"
-                        name="model"
-                        value={formData.model}
-                        onChange={handleInputChange}
-                        placeholder="e.g., UniFi AC Pro, EAP225"
-                      />
+                      <input type="text" name="model" value={formData.model} onChange={handleInputChange} placeholder="e.g., UniFi AC Pro, EAP225" />
                     </div>
                   </div>
                 </div>
@@ -730,37 +687,20 @@ const Devices = () => {
                   <h4 className="form-section-title">⚙️ Configuration</h4>
                   <div className="form-group full-width">
                     <label>Description</label>
-                    <textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      placeholder="Describe the device's purpose or any notes..."
-                      rows="3"
-                    />
+                    <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Describe the device's purpose or any notes..." rows="3" />
                   </div>
                   <div className="form-group checkbox-group">
-                    <input
-                      type="checkbox"
-                      name="monitoring_enabled"
-                      checked={formData.monitoring_enabled}
-                      onChange={handleInputChange}
-                    />
+                    <input type="checkbox" name="monitoring_enabled" checked={formData.monitoring_enabled} onChange={handleInputChange} />
                     <label className="checkbox-label">
                       <strong>Enable real-time monitoring for this device</strong>
-                      <div className="form-help">
-                        When enabled, the system performs network ping tests to monitor connectivity
-                      </div>
+                      <div className="form-help">When enabled, the system performs network ping tests to monitor connectivity</div>
                     </label>
                   </div>
                 </div>
 
                 <div className="form-actions">
-                  <button type="button" className="btn btn-secondary" onClick={closeModals}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Add Device
-                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={closeModals}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Add Device</button>
                 </div>
               </form>
             </div>
@@ -781,54 +721,31 @@ const Devices = () => {
                   <div className="form-row">
                     <div className="form-group">
                       <label>Device Name *</label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g., Router-R1, Switch-Floor2"
-                      />
+                      <input type="text" name="name" value={formData.name} onChange={handleInputChange} required placeholder="e.g., Router-R1, Switch-Floor2" />
                     </div>
                     <div className="form-group">
                       <label>IP Address *</label>
-                      <input
-                        type="text"
-                        name="ip_address"
-                        value={formData.ip_address}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g., 192.168.1.1"
-                        pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
-                      />
+                      <input type="text" name="ip_address" value={formData.ip_address} onChange={handleInputChange} required placeholder="e.g., 192.168.1.1" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" />
                     </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group">
                       <label>Device Type *</label>
-                      <select
-                        name="device_type"
-                        value={formData.device_type}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="">Choose device type...</option>
+                      <select name="device_type" value={formData.device_type} onChange={handleInputChange} required disabled={typesLoading || deviceTypes.length === 0}>
+                        <option value="">{typesLoading ? 'Loading types…' : 'Choose device type...'}</option>
                         {deviceTypes.map(type => (
                           <option key={type.id} value={type.id}>
                             {type.icon ? `${type.icon} ` : ''}{type.name}
                           </option>
                         ))}
                       </select>
+                      {(!typesLoading && deviceTypes.length === 0) && (
+                        <small className="form-help">No types available. Add some in Admin, then click Retry above.</small>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Location</label>
-                      <input
-                        type="text"
-                        name="location"
-                        value={formData.location}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Server Room A, Floor 2"
-                      />
+                      <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="e.g., Server Room A, Floor 2" />
                     </div>
                   </div>
                 </div>
@@ -838,23 +755,11 @@ const Devices = () => {
                   <div className="form-row">
                     <div className="form-group">
                       <label>Vendor</label>
-                      <input
-                        type="text"
-                        name="vendor"
-                        value={formData.vendor}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Cisco, Ubiquiti, Dell"
-                      />
+                      <input type="text" name="vendor" value={formData.vendor} onChange={handleInputChange} placeholder="e.g., Cisco, Ubiquiti, Dell" />
                     </div>
                     <div className="form-group">
                       <label>Model</label>
-                      <input
-                        type="text"
-                        name="model"
-                        value={formData.model}
-                        onChange={handleInputChange}
-                        placeholder="e.g., ISR4321, UniFi AC Pro"
-                      />
+                      <input type="text" name="model" value={formData.model} onChange={handleInputChange} placeholder="e.g., ISR4321, UniFi AC Pro" />
                     </div>
                   </div>
                 </div>
@@ -863,22 +768,11 @@ const Devices = () => {
                   <h4 className="form-section-title">⚙️ Settings</h4>
                   <div className="form-group full-width">
                     <label>Description</label>
-                    <textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      placeholder="Optional description..."
-                      rows="3"
-                    />
+                    <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Optional description..." rows="3" />
                   </div>
                   <div className="form-group checkbox-group">
                     <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        name="monitoring_enabled"
-                        checked={formData.monitoring_enabled}
-                        onChange={handleInputChange}
-                      />
+                      <input type="checkbox" name="monitoring_enabled" checked={formData.monitoring_enabled} onChange={handleInputChange} />
                       <span className="checkmark"></span>
                       Enable real-time monitoring for this device
                     </label>
@@ -887,12 +781,8 @@ const Devices = () => {
                 </div>
 
                 <div className="form-actions">
-                  <button type="button" className="btn btn-secondary" onClick={closeModals}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Update Device
-                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={closeModals}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Update Device</button>
                 </div>
               </form>
             </div>
@@ -912,15 +802,8 @@ const Devices = () => {
                 <p className="warning-text">This action cannot be undone.</p>
               </div>
               <div className="form-actions">
-                <button className="btn btn-secondary" onClick={closeModals}>
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-danger"
-                  onClick={() => deleteDevice(selectedDevice.id)}
-                >
-                  Delete Device
-                </button>
+                <button className="btn btn-secondary" onClick={closeModals}>Cancel</button>
+                <button className="btn btn-danger" onClick={() => deleteDevice(selectedDevice.id)}>Delete Device</button>
               </div>
             </div>
           </div>
