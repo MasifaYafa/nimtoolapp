@@ -3,26 +3,11 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { api, tokenManager } from '../services/api';
 import './Alerts.css';
 
-/**
- * >>> PLACE YOUR IMAGE HERE <<<
- *    frontend/src/assets/alerts-bg.jpg
- *
- * If you rename or move it, update the path below accordingly.
- */
-import alertsBg from '../assets/alerts-bg.jpg';
-
-// Background image style (lets Webpack/Vite bundle the asset)
-const BG_STYLE = {
-  backgroundImage: `url(${alertsBg})`,
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-  backgroundRepeat: 'no-repeat',
-};
-
 const ALERTS_SSE_URL = process.env.REACT_APP_ALERTS_SSE_URL || '';
 
+function asArray(x) { return Array.isArray(x) ? x : []; }
 function computeStatsFromAlerts(list = []) {
-  const safe = Array.isArray(list) ? list : [];
+  const safe = asArray(list);
   const now = Date.now();
   let active = 0, acknowledged = 0, resolved24h = 0, critical = 0;
 
@@ -32,7 +17,6 @@ function computeStatsFromAlerts(list = []) {
     if (st === 'active' || st === 'open') active++;
     if (st === 'acknowledged') acknowledged++;
     if (sev === 'critical') critical++;
-
     const resolvedAt = a.resolved_at || a.resolvedAt;
     if (resolvedAt) {
       const dt = new Date(resolvedAt).getTime();
@@ -54,27 +38,30 @@ const Alerts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // filters
   const [severity, setSeverity] = useState('all');
   const [status, setStatus] = useState('all');
   const [search, setSearch] = useState('');
 
-  // actions
   const [actionBusy, setActionBusy] = useState({});
   const [bulkBusy, setBulkBusy] = useState(false);
-
-  // modal
   const [selected, setSelected] = useState(null);
 
-  // live refs
   const esRef = useRef(null);
   const pollRef = useRef(null);
+
+  const normalizeMessage = (a) => {
+    // Force the exact text when a device goes offline (from backend monitoring)
+    const metric = (a.metric_name || a.metricName || '').toLowerCase();
+    const val = (a.current_value || a.currentValue || '').toString().toLowerCase();
+    if (metric === 'device_status' && val === 'offline') return 'This device is offline';
+    return a.message || a.title || 'Alert';
+  };
 
   const fetchAlerts = async () => {
     try {
       setError('');
-      if (!tokenManager.isLoggedIn()) {
-        window.location.href = '/login';
+      if (!tokenManager.isLoggedIn?.()) {
+        window.location.href = '/';
         return;
       }
       const params = {};
@@ -91,17 +78,12 @@ const Alerts = () => {
       setAlerts(items);
       setStats(s || computeStatsFromAlerts(items));
     } catch (e) {
-      const msg = String(e?.message || '');
-      if (msg.includes('session') || msg.includes('login')) {
-        setError('Your session has expired. Redirecting to login…');
-        setTimeout(() => (window.location.href = '/login'), 1500);
-      } else setError('Failed to load alerts: ' + msg);
+      setError('Failed to load alerts: ' + (e?.message || e));
     } finally {
       setLoading(false);
     }
   };
 
-  // Live updates: SSE with polling fallback
   useEffect(() => {
     let aborted = false;
 
@@ -112,7 +94,7 @@ const Alerts = () => {
     const startSSE = () => {
       if (!ALERTS_SSE_URL) return startPolling();
       try {
-        const token = tokenManager.getAccessToken();
+        const token = tokenManager.getAccessToken?.();
         const url = token
           ? `${ALERTS_SSE_URL}${ALERTS_SSE_URL.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
           : ALERTS_SSE_URL;
@@ -139,7 +121,7 @@ const Alerts = () => {
       pollRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [severity, status, search]);
+  }, [severity, status]);
 
   const acknowledgeAlert = async (id) => {
     try {
@@ -215,7 +197,7 @@ const Alerts = () => {
 
   if (loading) {
     return (
-      <div className="alerts-container" style={BG_STYLE}>
+      <div className="alerts-container">
         <div className="loading-container">
           <div className="spinner" />
           <p>Loading alerts…</p>
@@ -225,14 +207,14 @@ const Alerts = () => {
   }
 
   return (
-    <div className="alerts-container" style={BG_STYLE}>
+    <div className="alerts-container">
       {/* Header */}
       <header className="alerts-header">
         <div className="wrap">
           <div className="header-content">
             <div>
               <h1 className="h1">Alerts</h1>
-              <p className="muted">Real-time incidents, email/SMS notifications, and quick actions</p>
+              <p className="muted">Real-time incidents, notifications, and quick actions</p>
             </div>
             <div className="header-actions">
               <button className="btn btn-secondary" onClick={fetchAlerts}>Refresh</button>
@@ -246,8 +228,8 @@ const Alerts = () => {
       <main className="alerts-main">
         <div className="wrap">
           {error && (
-            <div className="error-message">
-              <span>⚠️ {error}</span>
+            <div className="card error-message">
+              <span>{error}</span>
               <button className="btn btn-ghost" onClick={() => setError('')}>Dismiss</button>
             </div>
           )}
@@ -281,13 +263,13 @@ const Alerts = () => {
                   {bulkBusy ? 'Working…' : 'Acknowledge All'}
                 </button>
                 <button className="btn btn-secondary" onClick={createTestAlert} disabled={bulkBusy}>
-                  🧪 Test Alert
+                  Test Alert
                 </button>
               </div>
             </div>
           </section>
 
-          {/* KPIs (orange) */}
+          {/* KPIs */}
           <section className="kpi-row">
             <div className="kpi card">
               <div className="kpi__label">Active Alerts</div>
@@ -311,46 +293,49 @@ const Alerts = () => {
             </div>
           </section>
 
-          {/* Recent Alerts — horizontal cards */}
+          {/* Recent Alerts — dark horizontal cards */}
           <section className="card">
             <div className="panel__title">Recent Alerts</div>
             {alerts.length ? (
               <div className="recent-grid">
-                {alerts.slice(0, 24).map((a) => (
-                  <div key={a.id} className="recent-card">
-                    <div className="recent-top">
-                      <span className={sevBadgeClass(a.severity)}>{(a.severity || 'info').toUpperCase()}</span>
-                      <span className={statusBadgeClass(a.status)} style={{ marginLeft: 6 }}>
-                        {(a.status || 'active').toUpperCase()}
-                      </span>
-                      <span className="muted right">{a.device_name || a.device || 'Unknown device'}</span>
+                {alerts.slice(0, 24).map((a) => {
+                  const msg = normalizeMessage(a);
+                  return (
+                    <div key={a.id} className="recent-card">
+                      <div className="recent-top">
+                        <span className={sevBadgeClass(a.severity)}>{(a.severity || 'info').toUpperCase()}</span>
+                        <span className={statusBadgeClass(a.status)} style={{ marginLeft: 6 }}>
+                          {(a.status || 'active').toUpperCase()}
+                        </span>
+                        <span className="muted right">{a.device_name || a.device || 'Unknown device'}</span>
+                      </div>
+                      <div className="recent-title">{a.title || msg || 'Alert'}</div>
+                      {msg && <div className="recent-desc muted">{msg}</div>}
+                      <div className="muted">{fmt(a.created_at || a.createdAt || a.first_occurred)}</div>
+                      <div className="row">
+                        {(['active', 'open'].includes((a.status || '').toLowerCase())) && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => acknowledgeAlert(a.id)}
+                            disabled={!!actionBusy[a.id]}
+                          >
+                            {actionBusy[a.id] ? '…' : 'Acknowledge'}
+                          </button>
+                        )}
+                        {(['active', 'acknowledged'].includes((a.status || '').toLowerCase())) && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => resolveAlert(a.id)}
+                            disabled={!!actionBusy[a.id]}
+                          >
+                            {actionBusy[a.id] ? '…' : 'Resolve'}
+                          </button>
+                        )}
+                        <button className="btn btn-secondary btn-sm" onClick={() => setSelected(a)}>Details</button>
+                      </div>
                     </div>
-                    <div className="recent-title">{a.title || a.message || 'Alert'}</div>
-                    {a.message && <div className="recent-desc muted">{a.message}</div>}
-                    <div className="muted">{fmt(a.created_at || a.createdAt || a.first_occurred)}</div>
-                    <div className="row">
-                      {(['active', 'open'].includes((a.status || '').toLowerCase())) && (
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => acknowledgeAlert(a.id)}
-                          disabled={!!actionBusy[a.id]}
-                        >
-                          {actionBusy[a.id] ? '…' : 'Acknowledge'}
-                        </button>
-                      )}
-                      {(['active', 'acknowledged'].includes((a.status || '').toLowerCase())) && (
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => resolveAlert(a.id)}
-                          disabled={!!actionBusy[a.id]}
-                        >
-                          {actionBusy[a.id] ? '…' : 'Resolve'}
-                        </button>
-                      )}
-                      <button className="btn btn-secondary btn-sm" onClick={() => setSelected(a)}>Details</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div style={{ padding: 12 }}>No alerts match your filters.</div>
@@ -371,7 +356,7 @@ const Alerts = () => {
               <div className="detail-grid">
                 <div className="detail-item">
                   <strong>Title</strong>
-                  <div>{selected.title || selected.message || '—'}</div>
+                  <div>{selected.title || normalizeMessage(selected) || '—'}</div>
                 </div>
                 <div className="detail-item">
                   <strong>Severity</strong>
@@ -401,16 +386,16 @@ const Alerts = () => {
                   <strong>Count</strong>
                   <div>{selected.occurrence_count ?? '—'}</div>
                 </div>
-                {selected.current_value && (
+                {selected.current_value != null && (
                   <div className="detail-item">
                     <strong>Current Value</strong>
-                    <div>{selected.current_value}</div>
+                    <div>{String(selected.current_value)}</div>
                   </div>
                 )}
-                {selected.threshold_value && (
+                {selected.threshold_value != null && (
                   <div className="detail-item">
                     <strong>Threshold</strong>
-                    <div>{selected.threshold_value}</div>
+                    <div>{String(selected.threshold_value)}</div>
                   </div>
                 )}
                 {selected.description && (

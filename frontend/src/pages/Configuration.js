@@ -1,12 +1,13 @@
-// Configuration.js — Fixed authentication to work with NIM-Tool backend
+// Configuration.js — Dark, dashboard-matched UI with Bootstrap Icons
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import './Configuration.css';
 import { api } from '../services/api'; // Use your existing API service
 
 /* -------------------- Small UI helpers -------------------- */
 const StatusPill = ({ status }) => (
-  <span className={`status-badge ${status}`} aria-label={`Status ${status}`}>
-    {status?.toUpperCase()}
+  <span className={`status-badge ${String(status || 'unknown').toLowerCase()}`} aria-label={`Status ${status}`}>
+    {(status || 'unknown').toUpperCase()}
   </span>
 );
 
@@ -23,28 +24,28 @@ const Configuration = () => {
 
   const tabs = useMemo(
     () => [
-      { id: 'devices', name: 'Device List', icon: '📋' },
-      { id: 'configure', name: 'Configure Device', icon: '⚙️' },
+      { id: 'devices', name: 'Device List', icon: <i className="bi bi-ui-checks-grid" /> },
+      { id: 'configure', name: 'Configure Device', icon: <i className="bi bi-sliders2" /> },
     ],
     []
   );
 
   const getDeviceIcon = useCallback((type) => {
-    switch ((type || '').toLowerCase()) {
-      case 'router': return '🔀';
-      case 'switch': return '🔗';
-      case 'firewall': return '🛡️';
-      case 'ap': return '📡';
-      default: return '📱';
-    }
+    const v = (type || '').toLowerCase();
+    if (v.includes('router')) return <i className="bi bi-hdd-network" />;
+    if (v.includes('switch')) return <i className="bi bi-diagram-3" />;
+    if (v.includes('firewall')) return <i className="bi bi-shield-lock" />;
+    if (v.includes('ap') || v.includes('access') || v.includes('point')) return <i className="bi bi-wifi" />;
+    if (v.includes('server')) return <i className="bi bi-hdd-stack" />;
+    return <i className="bi bi-cpu" />;
   }, []);
 
   const getStatusColor = useCallback((status) => {
     switch ((status || '').toLowerCase()) {
-      case 'online': return '#28a745';
-      case 'offline': return '#dc3545';
-      case 'warning': return '#ffc107';
-      default: return '#6c757d';
+      case 'online': return '#22c55e';
+      case 'offline': return '#ef4444';
+      case 'warning': return '#f59e0b';
+      default: return '#6b7280';
     }
   }, []);
 
@@ -53,9 +54,7 @@ const Configuration = () => {
     setLoading(true);
     setError(null);
     try {
-      // Use your existing API service
       const data = await api.devices.list();
-      // Handle both paginated and direct array responses
       const deviceList = data.results || data || [];
       setDevices(Array.isArray(deviceList) ? deviceList : []);
     } catch (e) {
@@ -81,8 +80,7 @@ const Configuration = () => {
   const handleDiscover = useCallback(async () => {
     setLoading(true);
     try {
-      // Use existing ping all functionality as device discovery
-      await api.devices.pingAll();
+      await api.devices.pingAll(); // reuse pingAll for discovery
       await fetchDevices();
     } catch (e) {
       console.error('Discovery failed:', e);
@@ -99,10 +97,7 @@ const Configuration = () => {
 
     setLoading(true);
     try {
-      // You'll need to determine the device type - for now, default to 'switch'
-      // You may want to add a device type selector
-      const deviceTypeId = 1; // Adjust based on your device types
-
+      const deviceTypeId = 1; // adjust to your server’s default/real type IDs
       await api.devices.create({
         name,
         ip_address: ip,
@@ -122,10 +117,8 @@ const Configuration = () => {
     if (!selectedDevice) return;
     setEditorBusy(true);
     try {
-      // Use existing device configuration endpoint
       const configs = await api.devices.getConfigurations(selectedDevice.id);
       if (configs && configs.length > 0) {
-        // Get the most recent configuration
         setConfigText(configs[0].config_data || '');
       } else {
         setConfigText('# No existing configuration found\n# Enter new configuration below\n');
@@ -142,7 +135,7 @@ const Configuration = () => {
     if (!selectedDevice || !configText.trim()) return;
     setEditorBusy(true);
     try {
-      // Mock validation for now - you can implement actual validation endpoint
+      // stub validation
       alert('Configuration syntax appears valid.');
     } catch (e) {
       alert(e.message || 'Validation failed.');
@@ -155,7 +148,6 @@ const Configuration = () => {
     if (!selectedDevice || !configText.trim()) return;
     setEditorBusy(true);
     try {
-      // Mock preview for now
       const preview = `Preview for ${selectedDevice.name}:\n\n${configText}\n\n# This configuration will be applied to the device.`;
       alert(preview);
     } catch (e) {
@@ -171,14 +163,8 @@ const Configuration = () => {
 
     setEditorBusy(true);
     try {
-      // Create a backup first using existing backup functionality
       await api.devices.backupConfig(selectedDevice.id);
-
-      // For now, just create a "configuration session" simulation
-      // In the full implementation, this would use your configuration API
       alert(`Configuration pushed to ${selectedDevice.name} successfully!\nA backup was created before applying changes.`);
-
-      // Clear the editor
       setConfigText('');
     } catch (e) {
       console.error('Push failed:', e);
@@ -242,7 +228,7 @@ const Configuration = () => {
 
       <div className="device-actions">
         <button className="btn btn-primary btn-sm" onClick={() => handleDeviceSelect(device)}>
-          Configure
+          <i className="bi bi-terminal" /> Configure
         </button>
       </div>
     </div>
@@ -252,28 +238,28 @@ const Configuration = () => {
     <div className="config-workspace">
       <div className="config-editor">
         <div className="editor-header">
-          <h4>Configuration Commands</h4>
+          <h4><i className="bi bi-code-slash" /> Configuration Commands</h4>
           <div className="editor-actions">
             <button
               className="btn btn-secondary btn-sm"
               onClick={loadCurrent}
               disabled={!selectedDevice || editorBusy}
             >
-              {editorBusy ? 'Loading…' : 'Load Current'}
+              {editorBusy ? 'Loading…' : (<><i className="bi bi-cloud-download" /> Load Current</>)}
             </button>
             <button
               className="btn btn-info btn-sm"
               onClick={validate}
               disabled={!selectedDevice || !configText.trim() || editorBusy}
             >
-              Validate
+              <i className="bi bi-check2-circle" /> Validate
             </button>
             <button
               className="btn btn-success btn-sm"
               onClick={preview}
               disabled={!selectedDevice || !configText.trim() || editorBusy}
             >
-              Preview
+              <i className="bi bi-eye" /> Preview
             </button>
           </div>
         </div>
@@ -293,21 +279,21 @@ const Configuration = () => {
             onClick={pushConfig}
             disabled={!selectedDevice || !configText.trim() || editorBusy}
           >
-            {editorBusy ? 'Working…' : 'Push Configuration'}
+            {editorBusy ? 'Working…' : (<><i className="bi bi-upload" /> Push Configuration</>)}
           </button>
           <button
             className="btn btn-warning"
             onClick={() => setConfigText('')}
             disabled={!configText || editorBusy}
           >
-            Reset
+            <i className="bi bi-arrow-counterclockwise" /> Reset
           </button>
         </div>
       </div>
 
       <aside className="config-sidebar" aria-label="Device summary and quick commands">
         <div className="device-summary">
-          <h4>Device Information</h4>
+          <h4><i className="bi bi-info-circle" /> Device Information</h4>
           {selectedDevice ? (
             <>
               <div className="summary-item"><strong>Name:</strong> {selectedDevice.name}</div>
@@ -323,12 +309,12 @@ const Configuration = () => {
         </div>
 
         <div className="quick-commands">
-          <h4>Quick Commands</h4>
-          <button className="btn btn-secondary btn-sm full-width">Show Running Config</button>
-          <button className="btn btn-secondary btn-sm full-width">Show Version</button>
-          <button className="btn btn-secondary btn-sm full-width">Show Interfaces</button>
-          <button className="btn btn-secondary btn-sm full-width">Show IP Route</button>
-          <button className="btn btn-secondary btn-sm full-width">Show VLAN</button>
+          <h4><i className="bi bi-lightning-charge" /> Quick Commands</h4>
+          <button className="btn btn-secondary btn-sm full-width"><i className="bi bi-file-earmark-text" /> Show Running Config</button>
+          <button className="btn btn-secondary btn-sm full-width"><i className="bi bi-cpu" /> Show Version</button>
+          <button className="btn btn-secondary btn-sm full-width"><i className="bi bi-hdd-network" /> Show Interfaces</button>
+          <button className="btn btn-secondary btn-sm full-width"><i className="bi bi-signpost-split" /> Show IP Route</button>
+          <button className="btn btn-secondary btn-sm full-width"><i className="bi bi-diagram-3" /> Show VLAN</button>
         </div>
       </aside>
     </div>
@@ -367,45 +353,29 @@ const Configuration = () => {
             <h3>Network Devices</h3>
             <div className="devices-actions">
               <button className="btn btn-info" onClick={handleDiscover} disabled={loading}>
-                Discover Devices
+                <i className="bi bi-search" /> Discover Devices
               </button>
               <button className="btn btn-primary" onClick={handleAddDevice} disabled={loading}>
-                + Add Device
+                <i className="bi bi-plus-lg" /> Add Device
               </button>
             </div>
           </div>
 
           {error && (
-            <div className="error-banner" style={{
-              padding: '12px',
-              margin: '12px 0',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              borderRadius: '8px'
-            }}>
-              ⚠️ {error}
+            <div className="error-banner">
+              <i className="bi bi-exclamation-triangle" /> {error}
             </div>
           )}
 
           {loading ? (
-            <div className="loading-banner" style={{
-              padding: '20px',
-              textAlign: 'center',
-              color: '#6b7280'
-            }}>
-              Loading devices…
+            <div className="loading-banner">
+              <i className="bi bi-arrow-repeat" /> Loading devices…
             </div>
           ) : (
             <div className="devices-grid">
               {devices.map((d) => <DeviceCard key={d.id} device={d} />)}
               {!devices.length && !error && (
-                <p className="no-device" style={{
-                  padding: '20px',
-                  textAlign: 'center',
-                  color: '#6b7280'
-                }}>
-                  No devices found.
-                </p>
+                <p className="no-device muted">No devices found.</p>
               )}
             </div>
           )}
@@ -428,7 +398,7 @@ const Configuration = () => {
                 <span className="device-ip">({selectedDevice.ip_address})</span>
               </div>
             ) : (
-              <p className="no-device">Please select a device from the Device List</p>
+              <p className="no-device muted">Please select a device from the Device List</p>
             )}
           </div>
 

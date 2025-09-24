@@ -1,25 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api, apiUtils } from '../services/api';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import './AppSettings.css';
 
-const AppSettings = () => {
-  // State management
+const VIEWS = {
+  HOME: 'home',
+  MONITORING: 'monitoring',
+  USERS: 'users',
+};
+
+export default function AppSettings() {
+  // view routing
+  const [view, setView] = useState(VIEWS.HOME);
+
+  // common ui state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Settings state
+  // settings
   const [settings, setSettings] = useState({
     ping_interval: 5,
     snmp_timeout: 10,
     alert_threshold: 3,
-    retry_attempts: 3
+    retry_attempts: 3,
   });
 
-  // Users state
+  // users
   const [users, setUsers] = useState([]);
 
-  // New user form state
+  // new user form
   const [showAddUser, setShowAddUser] = useState(false);
   const [newUser, setNewUser] = useState({
     username: '',
@@ -28,13 +38,10 @@ const AppSettings = () => {
     last_name: '',
     password: '',
     confirm_password: '',
-    profile: {
-      phone: '',
-      department: ''
-    }
+    profile: { phone: '', department: '' },
   });
 
-  // Load initial data
+  // load
   useEffect(() => {
     loadData();
   }, []);
@@ -44,11 +51,10 @@ const AppSettings = () => {
     try {
       const [settingsRes, usersRes] = await Promise.all([
         api.request('/app_settings/settings/'),
-        api.request('/app_settings/users/')
+        api.request('/app_settings/users/'),
       ]);
-
-      setSettings(settingsRes);
-      setUsers(usersRes);
+      if (settingsRes) setSettings(settingsRes);
+      if (usersRes) setUsers(usersRes);
     } catch (err) {
       showMessage(apiUtils.handleError(err), 'error');
     } finally {
@@ -56,36 +62,32 @@ const AppSettings = () => {
     }
   };
 
-  const showMessage = (message, type = 'success') => {
+  // helpers
+  const showMessage = (msg, type = 'success') => {
     if (type === 'success') {
-      setSuccess(message);
+      setSuccess(msg);
       setError('');
     } else {
-      setError(message);
+      setError(msg);
       setSuccess('');
     }
-
     setTimeout(() => {
       setSuccess('');
       setError('');
-    }, 5000);
+    }, 4000);
   };
 
-  const handleSettingsChange = (key, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: parseInt(value) || 0
-    }));
-  };
+  const onSettingsChange = (key, val) =>
+    setSettings((p) => ({ ...p, [key]: parseInt(val || 0, 10) }));
 
   const handleSaveSettings = async () => {
     setLoading(true);
     try {
-      const response = await api.request('/app_settings/settings/1/', {
+      const res = await api.request('/app_settings/settings/1/', {
         method: 'PUT',
-        body: JSON.stringify(settings)
+        body: JSON.stringify(settings),
       });
-      setSettings(response);
+      setSettings(res);
       showMessage('Settings saved successfully!');
     } catch (err) {
       showMessage(apiUtils.handleError(err), 'error');
@@ -97,14 +99,13 @@ const AppSettings = () => {
   const handleTestSNMP = async () => {
     setLoading(true);
     try {
-      const response = await api.request('/app_settings/settings/test_snmp/', {
-        method: 'POST'
+      const res = await api.request('/app_settings/settings/test_snmp/', {
+        method: 'POST',
       });
-
-      if (response.success) {
-        showMessage(`SNMP test successful! Response time: ${response.response_time}ms`);
+      if (res?.success) {
+        showMessage(`SNMP test successful! Response time: ${res.response_time}ms`);
       } else {
-        showMessage(response.message, 'error');
+        showMessage(res?.message || 'SNMP test failed', 'error');
       }
     } catch (err) {
       showMessage(apiUtils.handleError(err), 'error');
@@ -113,21 +114,12 @@ const AppSettings = () => {
     }
   };
 
-  const handleNewUserChange = (path, value) => {
+  const onNewUserChange = (path, value) => {
     if (path.includes('.')) {
       const [parent, child] = path.split('.');
-      setNewUser(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
-        }
-      }));
+      setNewUser((p) => ({ ...p, [parent]: { ...p[parent], [child]: value } }));
     } else {
-      setNewUser(prev => ({
-        ...prev,
-        [path]: value
-      }));
+      setNewUser((p) => ({ ...p, [path]: value }));
     }
   };
 
@@ -136,20 +128,19 @@ const AppSettings = () => {
       showMessage('Passwords do not match', 'error');
       return;
     }
-
-    if (newUser.password.length < 8) {
+    if ((newUser.password || '').length < 8) {
       showMessage('Password must be at least 8 characters', 'error');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await api.request('/app_settings/users/', {
+      const created = await api.request('/app_settings/users/', {
         method: 'POST',
-        body: JSON.stringify(newUser)
+        body: JSON.stringify(newUser),
       });
-
-      setUsers([...users, response]);
+      setUsers((u) => [...u, created]);
+      setShowAddUser(false);
       setNewUser({
         username: '',
         email: '',
@@ -157,9 +148,8 @@ const AppSettings = () => {
         last_name: '',
         password: '',
         confirm_password: '',
-        profile: { phone: '', department: '' }
+        profile: { phone: '', department: '' },
       });
-      setShowAddUser(false);
       showMessage('User created successfully!');
     } catch (err) {
       showMessage(apiUtils.handleError(err), 'error');
@@ -168,18 +158,12 @@ const AppSettings = () => {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) {
-      return;
-    }
-
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('Delete this user?')) return;
     setLoading(true);
     try {
-      await api.request(`/app_settings/users/${userId}/`, {
-        method: 'DELETE'
-      });
-
-      setUsers(users.filter(user => user.id !== userId));
+      await api.request(`/app_settings/users/${id}/`, { method: 'DELETE' });
+      setUsers((u) => u.filter((x) => x.id !== id));
       showMessage('User deleted successfully!');
     } catch (err) {
       showMessage(apiUtils.handleError(err), 'error');
@@ -188,213 +172,193 @@ const AppSettings = () => {
     }
   };
 
+  // header
+  const BackBtn =
+    view !== VIEWS.HOME ? (
+      <button className="btn btn-secondary" onClick={() => setView(VIEWS.HOME)}>
+        <i className="bi bi-arrow-left-short" />
+        Back
+      </button>
+    ) : null;
+
   return (
     <div className="app-settings-container">
       <div className="container">
         {/* Header */}
         <div className="page-header">
-          <h2>App Settings</h2>
-          <p>Configure monitoring settings and manage users</p>
+          <div>
+            <h2>App Settings</h2>
+            <p>Configure monitoring settings and manage users</p>
+          </div>
+          <div className="breadcrumbs">{BackBtn}</div>
         </div>
 
-        {/* Messages */}
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
+        {/* Alerts */}
+        {error && <div className="alert alert-error"><i className="bi bi-exclamation-triangle" /> {error}</div>}
+        {success && <div className="alert alert-success"><i className="bi bi-check-circle" /> {success}</div>}
 
-        {/* Loading Overlay */}
+        {/* Loading */}
         {loading && (
           <div className="loading-overlay">
-            <div className="loading-spinner">Loading...</div>
+            <div className="loading-box">
+              <i className="bi bi-arrow-repeat spin" /> Loading…
+            </div>
           </div>
         )}
 
-        {/* Content */}
-        <div className="settings-content">
+        {/* VIEWS */}
+        {view === VIEWS.HOME && (
+          <div className="cards-grid">
+            <button className="tile-card" onClick={() => setView(VIEWS.Monitoring || VIEWS.MONITORING)}>
+              <div className="tile-icon"><i className="bi bi-speedometer2" /></div>
+              <div className="tile-body">
+                <h3>Monitoring Settings</h3>
+                <p>Intervals, timeouts and alert thresholds for network monitoring.</p>
+              </div>
+              <div className="tile-chevron"><i className="bi bi-chevron-right" /></div>
+            </button>
 
-          {/* Monitoring Settings Section */}
-          <div className="settings-section">
-            <h3>Monitoring Settings</h3>
+            <button className="tile-card" onClick={() => setView(VIEWS.USERS)}>
+              <div className="tile-icon"><i className="bi bi-people" /></div>
+              <div className="tile-body">
+                <h3>User Management</h3>
+                <p>Create, remove and manage user access and profiles.</p>
+              </div>
+              <div className="tile-chevron"><i className="bi bi-chevron-right" /></div>
+            </button>
+          </div>
+        )}
+
+        {view === VIEWS.MONITORING && (
+          <div className="card">
+            <div className="card-head">
+              <h3><i className="bi bi-speedometer2" /> Monitoring Settings</h3>
+            </div>
+
             <div className="form-grid">
               <div className="form-group">
                 <label>Ping Interval (seconds)</label>
                 <input
                   type="number"
-                  value={settings.ping_interval || ''}
-                  onChange={(e) => handleSettingsChange('ping_interval', e.target.value)}
                   className="form-input"
-                  min="1"
-                  max="300"
+                  min="1" max="300"
+                  value={settings.ping_interval ?? ''}
+                  onChange={(e) => onSettingsChange('ping_interval', e.target.value)}
                   disabled={loading}
                 />
               </div>
+
               <div className="form-group">
                 <label>SNMP Timeout (seconds)</label>
                 <input
                   type="number"
-                  value={settings.snmp_timeout || ''}
-                  onChange={(e) => handleSettingsChange('snmp_timeout', e.target.value)}
                   className="form-input"
-                  min="1"
-                  max="60"
+                  min="1" max="60"
+                  value={settings.snmp_timeout ?? ''}
+                  onChange={(e) => onSettingsChange('snmp_timeout', e.target.value)}
                   disabled={loading}
                 />
               </div>
+
               <div className="form-group">
                 <label>Alert Threshold (failed checks)</label>
                 <input
                   type="number"
-                  value={settings.alert_threshold || ''}
-                  onChange={(e) => handleSettingsChange('alert_threshold', e.target.value)}
                   className="form-input"
-                  min="1"
-                  max="10"
+                  min="1" max="10"
+                  value={settings.alert_threshold ?? ''}
+                  onChange={(e) => onSettingsChange('alert_threshold', e.target.value)}
                   disabled={loading}
                 />
               </div>
+
               <div className="form-group">
                 <label>Retry Attempts</label>
                 <input
                   type="number"
-                  value={settings.retry_attempts || ''}
-                  onChange={(e) => handleSettingsChange('retry_attempts', e.target.value)}
                   className="form-input"
-                  min="1"
-                  max="5"
+                  min="1" max="5"
+                  value={settings.retry_attempts ?? ''}
+                  onChange={(e) => onSettingsChange('retry_attempts', e.target.value)}
                   disabled={loading}
                 />
               </div>
             </div>
+
             <div className="form-actions">
-              <button
-                className="btn btn-info"
-                onClick={handleTestSNMP}
-                disabled={loading}
-              >
-                Test SNMP Connection
+              <button className="btn btn-info" onClick={handleTestSNMP} disabled={loading}>
+                <i className="bi bi-activity" /> Test SNMP Connection
               </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSaveSettings}
-                disabled={loading}
-              >
-                Save Settings
+              <button className="btn btn-primary" onClick={handleSaveSettings} disabled={loading}>
+                <i className="bi bi-save" /> Save Settings
               </button>
             </div>
           </div>
+        )}
 
-          {/* User Management Section */}
-          <div className="settings-section">
-            <div className="section-header">
-              <h3>User Management</h3>
-              <button
-                className="btn btn-success"
-                onClick={() => setShowAddUser(!showAddUser)}
-                disabled={loading}
-              >
-                {showAddUser ? 'Cancel' : 'Add User'}
+        {view === VIEWS.USERS && (
+          <div className="card">
+            <div className="card-head card-head-row">
+              <h3><i className="bi bi-people" /> User Management</h3>
+              <button className="btn btn-success" onClick={() => setShowAddUser((s) => !s)} disabled={loading}>
+                <i className="bi bi-person-plus" /> {showAddUser ? 'Cancel' : 'Add User'}
               </button>
             </div>
 
-            {/* Add User Form */}
             {showAddUser && (
-              <div className="add-user-form">
-                <h4>Add New User</h4>
+              <div className="subcard">
+                <h4><i className="bi bi-person-plus" /> Add New User</h4>
                 <div className="form-grid">
                   <div className="form-group">
                     <label>Username</label>
-                    <input
-                      type="text"
-                      value={newUser.username}
-                      onChange={(e) => handleNewUserChange('username', e.target.value)}
-                      className="form-input"
-                      disabled={loading}
-                    />
+                    <input className="form-input" value={newUser.username}
+                      onChange={(e) => onNewUserChange('username', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>Email</label>
-                    <input
-                      type="email"
-                      value={newUser.email}
-                      onChange={(e) => handleNewUserChange('email', e.target.value)}
-                      className="form-input"
-                      disabled={loading}
-                    />
+                    <input type="email" className="form-input" value={newUser.email}
+                      onChange={(e) => onNewUserChange('email', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>First Name</label>
-                    <input
-                      type="text"
-                      value={newUser.first_name}
-                      onChange={(e) => handleNewUserChange('first_name', e.target.value)}
-                      className="form-input"
-                      disabled={loading}
-                    />
+                    <input className="form-input" value={newUser.first_name}
+                      onChange={(e) => onNewUserChange('first_name', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>Last Name</label>
-                    <input
-                      type="text"
-                      value={newUser.last_name}
-                      onChange={(e) => handleNewUserChange('last_name', e.target.value)}
-                      className="form-input"
-                      disabled={loading}
-                    />
+                    <input className="form-input" value={newUser.last_name}
+                      onChange={(e) => onNewUserChange('last_name', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>Phone</label>
-                    <input
-                      type="text"
-                      value={newUser.profile.phone}
-                      onChange={(e) => handleNewUserChange('profile.phone', e.target.value)}
-                      className="form-input"
-                      disabled={loading}
-                    />
+                    <input className="form-input" value={newUser.profile.phone}
+                      onChange={(e) => onNewUserChange('profile.phone', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>Department</label>
-                    <input
-                      type="text"
-                      value={newUser.profile.department}
-                      onChange={(e) => handleNewUserChange('profile.department', e.target.value)}
-                      className="form-input"
-                      disabled={loading}
-                    />
+                    <input className="form-input" value={newUser.profile.department}
+                      onChange={(e) => onNewUserChange('profile.department', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>Password</label>
-                    <input
-                      type="password"
-                      value={newUser.password}
-                      onChange={(e) => handleNewUserChange('password', e.target.value)}
-                      className="form-input"
-                      disabled={loading}
-                    />
+                    <input type="password" className="form-input" value={newUser.password}
+                      onChange={(e) => onNewUserChange('password', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>Confirm Password</label>
-                    <input
-                      type="password"
-                      value={newUser.confirm_password}
-                      onChange={(e) => handleNewUserChange('confirm_password', e.target.value)}
-                      className="form-input"
-                      disabled={loading}
-                    />
+                    <input type="password" className="form-input" value={newUser.confirm_password}
+                      onChange={(e) => onNewUserChange('confirm_password', e.target.value)} />
                   </div>
                 </div>
                 <div className="form-actions">
-                  <button
-                    className="btn btn-success"
-                    onClick={handleAddUser}
-                    disabled={loading}
-                  >
-                    Create User
+                  <button className="btn btn-success" onClick={handleAddUser} disabled={loading}>
+                    <i className="bi bi-check2-circle" /> Create User
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Users Table */}
-            <div className="users-table">
+            <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
@@ -407,36 +371,38 @@ const AppSettings = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map(user => (
-                    <tr key={user.id}>
-                      <td>{user.username}</td>
-                      <td>{user.email}</td>
-                      <td>{`${user.first_name} ${user.last_name}`.trim() || '-'}</td>
-                      <td>{user.profile?.department || '-'}</td>
+                  {(users || []).map((u) => (
+                    <tr key={u.id}>
+                      <td>{u.username}</td>
+                      <td>{u.email}</td>
+                      <td>{`${u.first_name || ''} ${u.last_name || ''}`.trim() || '-'}</td>
+                      <td>{u.profile?.department || '-'}</td>
                       <td>
-                        <span className={`status ${user.is_active ? 'active' : 'inactive'}`}>
-                          {user.is_active ? 'Active' : 'Inactive'}
+                        <span className={`badge ${u.is_active ? 'badge-success' : 'badge-secondary'}`}>
+                          <i className={`bi ${u.is_active ? 'bi-check-circle' : 'bi-dash-circle'}`} />
+                          {u.is_active ? 'ACTIVE' : 'INACTIVE'}
                         </span>
                       </td>
                       <td>
                         <button
                           className="btn btn-danger btn-sm"
-                          onClick={() => handleDeleteUser(user.id)}
+                          onClick={() => handleDeleteUser(u.id)}
                           disabled={loading}
                         >
-                          Delete
+                          <i className="bi bi-trash" /> Delete
                         </button>
                       </td>
                     </tr>
                   ))}
+                  {(!users || users.length === 0) && (
+                    <tr><td colSpan="6" style={{ color: '#9aa3b2' }}>No users.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default AppSettings;
+}

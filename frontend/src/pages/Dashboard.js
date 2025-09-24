@@ -1,3 +1,4 @@
+// frontend/src/pages/Dashboard.js
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ResponsiveContainer,
@@ -9,15 +10,18 @@ import {
 import ApiService from '../services/api';
 import './Dashboard.css';
 
-/**
- * >>> PLACE YOUR IMAGE HERE <<<
- *    frontend/src/assets/dashboard-bg.jpg
- *
- * If you rename or move it, update the path below accordingly.
- */
-import dashboardBg from '../assets/dashboard-bg.jpg';
+/* ========= Colors (dark-blue theme) =========
+   All charts use cool blues/cyans that match your Tailwind-y reference UI.
+*/
+const BLUE      = '#20a4ff';
+const CYAN      = '#2cd4ff';
+const INDIGO    = '#6d7cff';
+const SKY       = '#52b6ff';
+const DEEPBLUE  = '#0f1e3a';
+const MINT      = '#44ead2';
+const LAVENDER  = '#a78bfa';
 
-const COLORS = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#eab308'];
+const PIE_COLORS = [CYAN, BLUE, LAVENDER, SKY, INDIGO, MINT];
 
 /** Convert devices to stats and buckets */
 function computeStatsFromDevices(devices = []) {
@@ -41,82 +45,14 @@ function computeStatsFromDevices(devices = []) {
   };
 }
 
-const Dashboard = ({ onLogout, onNavigate }) => {
+const Dashboard = ({ onLogout }) => {
   const [statistics, setStatistics] = useState(null);
   const [alertStats, setAlertStats] = useState(null);
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // live series
   const [uptimeHistory, setUptimeHistory] = useState([]); // [{ts, uptime}]
   const pollRef = useRef(null);
-
-  // Background image style (lets Webpack bundle the asset)
-  const BG_STYLE = {
-    backgroundImage: `url(${dashboardBg})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-  };
-
-  // ---------- inline UI system ----------
-  const ORANGE = '#f97316';
-  const styles = {
-    container: { maxWidth: 1200, margin: '0 auto', padding: 16 },
-    row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 },
-    kpiRow: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 },
-    card: {
-      background: '#0f172a',
-      border: '1px solid #1f2937',
-      borderRadius: 12,
-      padding: 16,
-      boxShadow: '0 8px 20px rgba(0,0,0,.25)',
-      color: '#e5e7eb',
-    },
-    title: { color: '#94a3b8', fontWeight: 600, marginBottom: 10, display: 'flex', alignItems: 'center' },
-    chartBox: { height: 260 },
-    kpiLabel: { color: ORANGE, fontWeight: 700, letterSpacing: '.2px' },
-    kpiValue: { color: ORANGE, fontWeight: 800, fontSize: 26, marginTop: 6 },
-    kpiMeta: { color: '#9aa3b2', marginTop: 4 },
-    right: { marginLeft: 'auto' },
-    recentGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 },
-    recentCard: {
-      background: '#101b30',
-      border: '1px solid #1f2937',
-      borderRadius: 12,
-      padding: 12,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8,
-    },
-    recentTop: { display: 'flex', alignItems: 'center', gap: 8 },
-    recentType: { color: '#9aa3b2', fontSize: 13 },
-    recentName: { fontWeight: 700, letterSpacing: '.2px' },
-    recentIp: { color: '#9aa3b2', fontSize: 13 },
-    btn: {
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      padding: '8px 12px', borderRadius: 10, textDecoration: 'none',
-      border: '1px solid #1f2937', background: '#18233a', color: '#e5e7eb', fontWeight: 600,
-      cursor: 'pointer'
-    },
-    btnPrimary: { background: `linear-gradient(135deg, #ea580c, ${ORANGE})`, color: '#1a1a1a', border: 'none' },
-    btnGhost: { background: 'transparent', color: ORANGE, border: `1px solid ${ORANGE}` },
-    btnSm: { padding: '6px 10px', fontSize: 13 },
-    btnFull: { width: '100%' },
-    badge: {
-      marginLeft: 'auto', padding: '3px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700,
-      border: '1px solid #25324a', background: '#18233a', color: '#e5e7eb',
-    },
-    badgeOnline: { background: 'rgba(34,197,94,.22)', color: '#bef7cb', borderColor: 'rgba(34,197,94,.35)' },
-    badgeOffline: { background: 'rgba(239,68,68,.25)', color: '#ffd0d0', borderColor: 'rgba(239,68,68,.35)' },
-    badgeWarning: { background: 'rgba(245,158,11,.25)', color: '#ffe2b8', borderColor: 'rgba(245,158,11,.35)' },
-  };
-
-  // SPA navigation helper (avoids page reload)
-  const goToDevices = () => {
-    if (typeof onNavigate === 'function') onNavigate('devices');
-  };
 
   const fetchDashboardData = async () => {
     try {
@@ -134,7 +70,7 @@ const Dashboard = ({ onLogout, onNavigate }) => {
 
       try {
         statsData = await ApiService.getDeviceStatistics();
-      } catch (e) {
+      } catch {
         statsData = computeStatsFromDevices(devicesData);
       }
 
@@ -193,16 +129,7 @@ const Dashboard = ({ onLogout, onNavigate }) => {
 
   const typeData = useMemo(() => {
     const entries = Object.entries(statistics?.device_types || {});
-    return entries.map(([name, value], i) => ({ name, value, fill: COLORS[i % COLORS.length] }));
-  }, [statistics]);
-
-  const statusBarData = useMemo(() => {
-    if (!statistics) return [];
-    return [
-      { name: 'Online', value: statistics.online_devices || 0, fill: '#22c55e' },
-      { name: 'Warning', value: statistics.status_counts?.warning || 0, fill: '#f59e0b' },
-      { name: 'Offline', value: statistics.offline_devices || 0, fill: '#ef4444' },
-    ];
+    return entries.map(([name, value], i) => ({ name, value, fill: PIE_COLORS[i % PIE_COLORS.length] }));
   }, [statistics]);
 
   const deviceMiniData = useMemo(
@@ -212,25 +139,6 @@ const Dashboard = ({ onLogout, onNavigate }) => {
     })),
     [devices]
   );
-
-  const handleLogout = async () => {
-    try {
-      await ApiService.logout();
-      onLogout?.();
-    } catch {
-      onLogout?.();
-    }
-  };
-
-  const getDeviceTypeIcon = (deviceType) => {
-    switch ((deviceType || '').toLowerCase()) {
-      case 'router': return '🌐';
-      case 'switch': return '🔀';
-      case 'access_point': return '📶';
-      case 'firewall': return '🛡️';
-      default: return '📱';
-    }
-  };
 
   const getStatusDisplay = (status) => {
     switch ((status || '').toLowerCase()) {
@@ -243,8 +151,8 @@ const Dashboard = ({ onLogout, onNavigate }) => {
 
   if (loading) {
     return (
-      <div className="dashboard-container" style={BG_STYLE}>
-        <div className="loading-container">
+      <div className="dash-wrap">
+        <div className="loading-card">
           <div className="spinner" aria-hidden="true" />
           <p>Loading dashboard…</p>
         </div>
@@ -253,228 +161,175 @@ const Dashboard = ({ onLogout, onNavigate }) => {
   }
 
   return (
-    <div className="dashboard-container" style={BG_STYLE}>
-      {/* Header */}
-      <header className="dashboard-header">
-        <div className="header-content" style={styles.container}>
-          <div>
-            <h1 className="h1">NIM-Tool Dashboard</h1>
-            <p className="muted">Live network overview &amp; health</p>
-          </div>
-          <div className="header-actions">
-            <button
-              className="btn btn-secondary"
-              style={{ ...styles.btn }}
-              onClick={fetchDashboardData}
-            >
-              Refresh
-            </button>
-            <button
-              className="btn btn-primary"
-              style={{ ...styles.btn, ...styles.btnPrimary, marginLeft: 8 }}
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
-          </div>
+    <div className="dash-wrap">
+      <header className="dash-header">
+        <div>
+          <h1 className="dash-title">General Statistics</h1>
+          <p className="dash-subtitle">Live overview of your network</p>
+        </div>
+        <div className="dash-actions">
+          <button className="btn btn-ghost" onClick={fetchDashboardData}>Refresh</button>
+          <button className="btn btn-primary" onClick={onLogout}>Logout</button>
         </div>
       </header>
 
-      {/* Main */}
-      <main className="dashboard-main">
-        <div style={styles.container}>
-          {error && (
-            <div className="error-message" style={{ ...styles.card, background: '#2a1a13', marginBottom: 20 }}>
-              {error}
-              <button
-                onClick={fetchDashboardData}
-                className="btn btn-primary"
-                style={{ ...styles.btn, ...styles.btnPrimary, marginLeft: 12 }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {/* KPIs */}
-          {(statistics || alertStats) && (
-            <section style={styles.kpiRow}>
-              <div style={styles.card}>
-                <div style={styles.kpiLabel}>Total Devices</div>
-                <div style={styles.kpiValue}>{statistics?.total_devices || 0}</div>
-                <div style={styles.kpiMeta}>{statistics?.online_devices || 0} Online</div>
-              </div>
-              <div style={styles.card}>
-                <div style={styles.kpiLabel}>Active Alerts</div>
-                <div style={styles.kpiValue}>{alertStats?.active_alerts || 0}</div>
-                <div style={styles.kpiMeta}>
-                  {alertStats?.critical_alerts || 0} Critical
-                </div>
-              </div>
-              <div style={styles.card}>
-                <div style={styles.kpiLabel}>Network Health</div>
-                <div style={styles.kpiValue}>{statistics?.uptime_percentage || 0}%</div>
-                <div style={styles.kpiMeta}>Uptime</div>
-              </div>
-              <div style={styles.card}>
-                <div style={styles.kpiLabel}>Total Alerts</div>
-                <div style={styles.kpiValue}>{alertStats?.total_alerts || 0}</div>
-                <div style={styles.kpiMeta}>
-                  {alertStats?.resolved_alerts || 0} Resolved
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Row 1: Uptime + Device Types */}
-          <section style={styles.row2}>
-            <div style={styles.card}>
-              <div style={styles.title}>Uptime % (live)</div>
-              <div style={styles.chartBox}>
-                <ResponsiveContainer>
-                  <AreaChart data={uptimeHistory.map(d => ({ ...d, x: new Date(d.ts).toLocaleTimeString() }))}>
-                    <defs>
-                      <linearGradient id="uptime" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#22c55e" stopOpacity={0.9} />
-                        <stop offset="100%" stopColor="#22c55e" stopOpacity={0.2} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="x" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="uptime" stroke="#22c55e" fill="url(#uptime)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div style={styles.card}>
-              <div style={styles.title}>Device Types</div>
-              <div style={styles.chartBox}>
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie dataKey="value" data={typeData} innerRadius={55} outerRadius={95} paddingAngle={2}>
-                      {typeData.map((entry, index) => (
-                        <Cell key={index} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </section>
-
-          {/* Row 2: All Devices + Alert Status */}
-          <section style={styles.row2}>
-            <div style={styles.card}>
-              <div style={{ ...styles.title }}>
-                <span>All Devices (live)</span>
-                {/* SPA navigation (no page reload) */}
-                <button
-                  type="button"
-                  onClick={goToDevices}
-                  style={{ ...styles.btn, ...styles.btnGhost, ...styles.right }}
-                >
-                  Open Devices
-                </button>
-              </div>
-              <div style={styles.chartBox}>
-                <ResponsiveContainer>
-                  <BarChart data={deviceMiniData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" interval={0} angle={-30} textAnchor="end" height={70} />
-                    <YAxis ticks={[0, 1]} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar name="Online" dataKey="online" fill="#22c55e" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div style={styles.card}>
-              <div style={styles.title}>Alert Status</div>
-              <div style={styles.chartBox}>
-                <ResponsiveContainer>
-                  <BarChart data={[
-                    { name: 'Active', value: alertStats?.active_alerts || 0, fill: '#ef4444' },
-                    { name: 'Critical', value: alertStats?.critical_alerts || 0, fill: '#dc2626' },
-                    { name: 'Warning', value: alertStats?.warning_alerts || 0, fill: '#f59e0b' },
-                    { name: 'Resolved', value: alertStats?.resolved_alerts || 0, fill: '#22c55e' },
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="value">
-                      {[
-                        { fill: '#ef4444' },
-                        { fill: '#dc2626' },
-                        { fill: '#f59e0b' },
-                        { fill: '#22c55e' },
-                      ].map((d, i) => (
-                        <Cell key={i} fill={d.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </section>
-
-          {/* Recent Devices — horizontal grid */}
-          <section style={styles.card}>
-            <div style={styles.title}>Recent Devices</div>
-            {devices && devices.length > 0 ? (
-              <div style={styles.recentGrid}>
-                {devices.slice(0, 12).map(d => {
-                  const statusKey = (d.status || 'unknown').toLowerCase();
-                  const badgeStyle =
-                    statusKey === 'online' ? styles.badgeOnline :
-                    statusKey === 'offline' ? styles.badgeOffline :
-                    statusKey === 'warning' ? styles.badgeWarning : {};
-                  return (
-                    <div key={d.id} style={styles.recentCard}>
-                      <div style={styles.recentTop}>
-                        <span style={styles.recentType} title={d.device_type}>
-                          {getDeviceTypeIcon(d.device_type)} {d.device_type || 'Unknown'}
-                        </span>
-                        <span style={{ ...styles.badge, ...badgeStyle }}>
-                          {getStatusDisplay(d.status)}
-                        </span>
-                      </div>
-                      <div style={styles.recentName}>{d.name || 'Unnamed Device'}</div>
-                      <div style={styles.recentIp}>{d.ip_address || d.ip || 'No IP'}</div>
-                      {/* SPA navigation button */}
-                      <button
-                        type="button"
-                        onClick={goToDevices}
-                        style={{ ...styles.btn, ...styles.btnSm, ...styles.btnFull }}
-                      >
-                        View
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="center" style={{ padding: 24 }}>
-                <p>No devices found. Add some devices to get started!</p>
-                <button
-                  onClick={fetchDashboardData}
-                  className="btn btn-primary"
-                  style={{ ...styles.btn, ...styles.btnPrimary, marginTop: 10 }}
-                >
-                  Refresh
-                </button>
-              </div>
-            )}
-          </section>
+      {error && (
+        <div className="error-banner">
+          {error}
+          <button className="btn btn-sm btn-ghost" onClick={fetchDashboardData} style={{ marginLeft: 10 }}>
+            Retry
+          </button>
         </div>
-      </main>
+      )}
+
+      {/* KPI Row */}
+      {(statistics || alertStats) && (
+        <section className="kpi-row">
+          <div className="kpi-card">
+            <div className="kpi-label">Total Devices</div>
+            <div className="kpi-value">{statistics?.total_devices || 0}</div>
+            <div className="kpi-meta">{statistics?.online_devices || 0} Online</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-label">Active Alerts</div>
+            <div className="kpi-value">{alertStats?.active_alerts || 0}</div>
+            <div className="kpi-meta">{alertStats?.critical_alerts || 0} Critical</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-label">Network Health</div>
+            <div className="kpi-value">{statistics?.uptime_percentage || 0}%</div>
+            <div className="kpi-meta">Uptime</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-label">Total Alerts</div>
+            <div className="kpi-value">{alertStats?.total_alerts || 0}</div>
+            <div className="kpi-meta">{alertStats?.resolved_alerts || 0} Resolved</div>
+          </div>
+        </section>
+      )}
+
+      {/* Row 1: Uptime + Types */}
+      <section className="grid-2">
+        <div className="glass-card">
+          <div className="card-title">Uptime % (live)</div>
+          <div className="chart-box">
+            <ResponsiveContainer>
+              <AreaChart data={uptimeHistory.map(d => ({ ...d, x: new Date(d.ts).toLocaleTimeString() }))}>
+                <defs>
+                  <linearGradient id="uptimeGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={CYAN} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={CYAN} stopOpacity={0.15} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="rgba(255,255,255,.12)" strokeDasharray="3 3" />
+                <XAxis dataKey="x" tick={{ fill: '#c9d8ff' }} />
+                <YAxis domain={[0, 100]} tick={{ fill: '#c9d8ff' }} />
+                <Tooltip contentStyle={{ background: DEEPBLUE, border: '1px solid #28416d', color: '#eaf4ff' }} />
+                <Area type="monotone" dataKey="uptime" stroke={CYAN} strokeWidth={2} fill="url(#uptimeGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="glass-card">
+          <div className="card-title">Device Types</div>
+          <div className="chart-box">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie dataKey="value" data={typeData} innerRadius={55} outerRadius={95} paddingAngle={3} stroke="rgba(10,20,40,.6)">
+                  {typeData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: DEEPBLUE, border: '1px solid #28416d', color: '#eaf4ff' }} />
+                <Legend wrapperStyle={{ color: '#c9d8ff' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+
+      {/* Row 2: Devices + Alerts */}
+      <section className="grid-2">
+        <div className="glass-card">
+          <div className="card-title">Online by Device (top 12)</div>
+          <div className="chart-box">
+            <ResponsiveContainer>
+              <BarChart data={deviceMiniData}>
+                <CartesianGrid stroke="rgba(255,255,255,.12)" strokeDasharray="3 3" />
+                <XAxis dataKey="name" interval={0} angle={-30} textAnchor="end" height={70} tick={{ fill: '#c9d8ff' }} />
+                <YAxis ticks={[0, 1]} tick={{ fill: '#c9d8ff' }} />
+                <Tooltip contentStyle={{ background: DEEPBLUE, border: '1px solid #28416d', color: '#eaf4ff' }} />
+                <Legend wrapperStyle={{ color: '#c9d8ff' }} />
+                <Bar name="Online" dataKey="online" fill={BLUE} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="glass-card">
+          <div className="card-title">Alert Status</div>
+          <div className="chart-box">
+            <ResponsiveContainer>
+              <BarChart data={[
+                { name: 'Active',   value: alertStats?.active_alerts || 0,   fill: '#ff6b6b' },
+                { name: 'Critical', value: alertStats?.critical_alerts || 0, fill: '#ff3b3b' },
+                { name: 'Warning',  value: alertStats?.warning_alerts || 0,  fill: '#fbbf24' },
+                { name: 'Resolved', value: alertStats?.resolved_alerts || 0, fill: '#22c55e' },
+              ]}>
+                <CartesianGrid stroke="rgba(255,255,255,.12)" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: '#c9d8ff' }} />
+                <YAxis allowDecimals={false} tick={{ fill: '#c9d8ff' }} />
+                <Tooltip contentStyle={{ background: DEEPBLUE, border: '1px solid #28416d', color: '#eaf4ff' }} />
+                <Bar dataKey="value">
+                  <Cell fill="#ff6b6b" />
+                  <Cell fill="#ff3b3b" />
+                  <Cell fill="#fbbf24" />
+                  <Cell fill="#22c55e" />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+
+      {/* Recent Devices */}
+      <section className="glass-card">
+        <div className="card-title">Recent Devices</div>
+        {devices && devices.length > 0 ? (
+          <div className="recent-grid">
+            {devices.slice(0, 12).map(d => {
+              const statusKey = (d.status || 'unknown').toLowerCase();
+              return (
+                <div key={d.id} className="recent-card">
+                  <div className="recent-top">
+                    <span className="recent-type">{d.device_type || 'Unknown'}</span>
+                    <span
+                      className={
+                        'status-pill ' +
+                        (statusKey === 'online'
+                          ? 'online'
+                          : statusKey === 'offline'
+                          ? 'offline'
+                          : 'warn')
+                      }
+                    >
+                      {getStatusDisplay(d.status)}
+                    </span>
+                  </div>
+                  <div className="recent-name">{d.name || 'Unnamed Device'}</div>
+                  <div className="recent-ip">{d.ip_address || d.ip || 'No IP'}</div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="center" style={{ padding: 24 }}>
+            <p>No devices found. Add some devices to get started!</p>
+            <button onClick={fetchDashboardData} className="btn btn-primary" style={{ marginTop: 10 }}>
+              Refresh
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   );
 };

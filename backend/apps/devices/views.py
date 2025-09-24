@@ -1,10 +1,11 @@
+# apps/devices/views.py
 """
 Device API views for NIM-Tool.
 Handles device CRUD operations, monitoring, and management with REAL ping functionality.
 """
 
 from rest_framework import viewsets, status, permissions, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action  # ← required for @action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone

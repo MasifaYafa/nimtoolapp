@@ -1,5 +1,5 @@
 /* ===========================
-   Topology.css — pro dark UI
+   Topology.css — pro dark UI (fits width, no horizontal scroll)
    =========================== */
 
 :root {
@@ -26,7 +26,10 @@
   --shadow-2: 0 12px 30px rgba(0,0,0,.35);
 }
 
-/* Page shell (with bg image hook) */
+/* Prevent any page-wide horizontal scroll */
+html, body { overflow-x: hidden; }
+
+/* Page shell (gradient; image removed) */
 .topology-container {
   min-height: calc(100vh - 70px);
   padding: 28px 0 56px;
@@ -35,6 +38,7 @@
     radial-gradient(1200px 700px at 10% -10%, rgba(34, 197, 94, 0.08), transparent 60%),
     linear-gradient(135deg, var(--bg), #0a0f1a 60%);
   position: relative;
+  overflow-x: hidden;
 }
 .topology-container::before {
   content: "";
@@ -47,7 +51,14 @@
   pointer-events: none;
   z-index: 0;
 }
-.topology-container .container { width: min(1200px, 92vw); margin: 0 auto; position: relative; z-index: 1; }
+.topology-container .container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px;
+  position: relative;
+  z-index: 1;
+}
 
 /* Header */
 .page-header {
@@ -102,8 +113,13 @@
 .stat-text { font-weight: 700; letter-spacing: .2px; }
 
 /* Canvas */
-.topology-canvas { position: relative; overflow: hidden; }
-.topology-canvas svg { width: 100%; height: 500px; user-select: none; }
+.topology-canvas { position: relative; overflow: hidden; border-radius: var(--radius-lg); }
+.topology-canvas svg {
+  width: 100%;
+  height: clamp(360px, 48vh, 640px);
+  user-select: none;
+  display: block;
+}
 
 /* edges & labels */
 .topology-canvas line { stroke: var(--info); stroke-width: 0.35; opacity: 0.8; }
@@ -147,13 +163,12 @@
 .topo-success { background: linear-gradient(180deg, #103015, #0c2411); color: #b7f7c3; border: 1px solid rgba(34,197,94,.45); padding: 12px 14px; border-radius: var(--radius-md); margin-bottom: 16px; }
 
 /* Responsive */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .topology-controls { flex-direction: column; align-items: stretch; }
   .view-controls, .topology-actions { justify-content: center; }
-  .topology-canvas svg { height: 420px; }
 }
 @media (max-width: 600px) {
-  .topology-canvas svg { height: 360px; }
+  .topology-canvas svg { height: clamp(320px, 52vh, 560px); }
   .device-grid { grid-template-columns: 1fr; }
   .topology-legend { position: static; margin-top: 12px; }
 }

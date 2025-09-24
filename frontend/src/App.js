@@ -17,47 +17,74 @@ import Configuration from './pages/Configuration';
 import Troubleshoot from './pages/Troubleshoot';
 import Reports from './pages/Reports';
 import AppSettings from './pages/AppSettings';
-import Header from './components/common/Header';
 
+// NEW: left sidebar layout (replaces the old Header)
+import Sidebar from './components/layout/Sidebar';
+
+// global CSS
 import './styles/globals.css';
 import './App.css';
 
+// NEW: bootstrap icons (for sidebar)
+import 'bootstrap-icons/font/bootstrap-icons.css';
+
+// Canonical keys we will ALWAYS write
 const ACCESS_KEY = 'accessToken';
 const REFRESH_KEY = 'refreshToken';
+
+// Accept any of these when reading (normalizes to the canonical keys above)
+const ACCESS_ALIASES = ['accessToken', 'access', 'nim_access'];
+const REFRESH_ALIASES = ['refreshToken', 'refresh', 'nim_refresh'];
+
+function readAny(keys) {
+  for (const k of keys) {
+    const v = localStorage.getItem(k);
+    if (v) return v;
+  }
+  return null;
+}
+
+function normalizeToCanonical() {
+  const access = readAny(ACCESS_ALIASES);
+  const refresh = readAny(REFRESH_ALIASES);
+  if (access) localStorage.setItem(ACCESS_KEY, access);
+  if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
+  return { access, refresh };
+}
 
 function useAuthState() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [booting, setBooting] = useState(true);
 
   useEffect(() => {
-    // Align with api.js storage keys
-    const access = localStorage.getItem(ACCESS_KEY);
-    const refresh = localStorage.getItem(REFRESH_KEY);
-    setIsAuthenticated(Boolean(access && refresh));
+    const { access } = normalizeToCanonical();
+    setIsAuthenticated(Boolean(access));
     setBooting(false);
+
+    const onStorage = () => {
+      const a = readAny(ACCESS_ALIASES);
+      setIsAuthenticated(Boolean(a));
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const login = (tokens) => {
-    // Allow either your Login page to call with tokens,
-    // or rely on api.js having already saved them.
-    if (tokens?.access) localStorage.setItem(ACCESS_KEY, tokens.access);
-    if (tokens?.refresh) localStorage.setItem(REFRESH_KEY, tokens.refresh);
-    setIsAuthenticated(true);
-    // send to dashboard
+    const access = tokens?.access || tokens?.accessToken || tokens?.token;
+    const refresh = tokens?.refresh || tokens?.refreshToken;
+    if (access) localStorage.setItem(ACCESS_KEY, access);
+    if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
+    setIsAuthenticated(Boolean(access));
     window.location.replace('/dashboard');
   };
 
   const logout = () => {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+    [...ACCESS_ALIASES, ...REFRESH_ALIASES].forEach(k => localStorage.removeItem(k));
     setIsAuthenticated(false);
     window.location.replace('/');
   };
 
-  return useMemo(
-    () => ({ isAuthenticated, booting, login, logout }),
-    [isAuthenticated, booting]
-  );
+  return useMemo(() => ({ isAuthenticated, booting, login, logout }), [isAuthenticated, booting]);
 }
 
 function ProtectedRoute({ authed, children }) {
@@ -80,93 +107,90 @@ export default function App() {
     );
   }
 
+  const showSidebar = auth.isAuthenticated && window.location.pathname !== '/';
+
   return (
     <BrowserRouter>
-      {/* Hide header on the login page */}
-      {window.location.pathname !== '/' && <Header onLogout={auth.logout} />}
+      {showSidebar && <Sidebar onLogout={auth.logout} />}
 
-      <main className="main-content">
-        <Routes>
-          {/* Landing page = Login */}
-          <Route path="/" element={<Login onLogin={auth.login} />} />
+      {/* Content area sits next to the sidebar */}
+      <div className={showSidebar ? 'nim-shell' : ''}>
+        <main className="main-content">
+          <Routes>
+            {/* Login */}
+            <Route path="/" element={<Login onLogin={auth.login} />} />
 
-          {/* Protected app routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute authed={auth.isAuthenticated}>
-                <Dashboard onLogout={auth.logout} />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute authed={auth.isAuthenticated}>
+                  <Dashboard onLogout={auth.logout} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/devices"
+              element={
+                <ProtectedRoute authed={auth.isAuthenticated}>
+                  <Devices />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/alerts"
+              element={
+                <ProtectedRoute authed={auth.isAuthenticated}>
+                  <Alerts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/topology"
+              element={
+                <ProtectedRoute authed={auth.isAuthenticated}>
+                  <Topology />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/configuration"
+              element={
+                <ProtectedRoute authed={auth.isAuthenticated}>
+                  <Configuration />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/troubleshoot"
+              element={
+                <ProtectedRoute authed={auth.isAuthenticated}>
+                  <Troubleshoot />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute authed={auth.isAuthenticated}>
+                  <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute authed={auth.isAuthenticated}>
+                  <AppSettings />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/devices"
-            element={
-              <ProtectedRoute authed={auth.isAuthenticated}>
-                <Devices />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/alerts"
-            element={
-              <ProtectedRoute authed={auth.isAuthenticated}>
-                <Alerts />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/topology"
-            element={
-              <ProtectedRoute authed={auth.isAuthenticated}>
-                <Topology />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/configuration"
-            element={
-              <ProtectedRoute authed={auth.isAuthenticated}>
-                <Configuration />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/troubleshoot"
-            element={
-              <ProtectedRoute authed={auth.isAuthenticated}>
-                <Troubleshoot />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/reports"
-            element={
-              <ProtectedRoute authed={auth.isAuthenticated}>
-                <Reports />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute authed={auth.isAuthenticated}>
-                <AppSettings />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Catch-all → Login */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
+            {/* Default */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </main>
+      </div>
     </BrowserRouter>
   );
 }

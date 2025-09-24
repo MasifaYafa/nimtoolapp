@@ -1,235 +1,167 @@
-/* ===========================
-   Dashboard.css (polished + BG image ready)
-   - Keeps your original class names
-   - Responsive, accessible, dark-mode friendly
-   =========================== */
-
-/* ---- Theme Tokens ---- */
-:root {
-  --bg: #0b1220;
-  --surface: #0f172a;
-  --surface-2: #111827;
-  --border: #1f2a44;
-
-  --text: #e5e7eb;
-  --text-muted: #b3bbc7;
-
-  --brand: #22c55e;    /* accent green */
-  --info: #3b82f6;     /* blue */
-  --warn: #f59e0b;     /* amber */
-  --danger: #ef4444;   /* red */
-  --ok: #22c55e;       /* green */
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-
-  --shadow-1: 0 6px 20px rgba(0, 0, 0, 0.18);
-  --shadow-2: 0 12px 30px rgba(0, 0, 0, 0.28);
-
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f5f7fb;
-    --surface: #ffffff;
-    --surface-2: #f3f4f6;
-    --border: #e5e7eb;
-
-    --text: #0f172a;
-    --text-muted: #475569;
-  }
-}
-
-/* =========================================
-   Page background + image (applied via JS)
-   ========================================= */
-.dashboard-container {
+/* ========= Blue gradient page background (no image) ========= */
+.dash-wrap {
   min-height: 100vh;
-  position: relative;
-
-  /* Fallback gradient if the image isn't loaded yet */
+  padding: 24px;
   background:
-    radial-gradient(1200px 700px at 10% -10%, rgba(34, 197, 94, 0.06), transparent 60%),
-    linear-gradient(135deg, var(--bg), #0a0f1a 60%);
-
-  /* The background image itself is set inline from Dashboard.js:
-     style={{ backgroundImage: `url(${dashboardBg})`, ... }} */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+    radial-gradient(900px 600px at 85% -10%, rgba(32,164,255,.25), transparent 60%),
+    radial-gradient(800px 500px at 10% -10%, rgba(102,126,234,.22), transparent 55%),
+    linear-gradient(180deg, #0b1224 0%, #0f1e3a 40%, #0b1224 100%);
+  color: #eaf4ff;
 }
 
-/* Soft overlay for readability on any photo */
-.dashboard-container::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(1200px 700px at 20% -10%, rgba(59,130,246,.15), transparent),
-    radial-gradient(900px 600px at 100% -10%, rgba(234,88,12,.12), transparent),
-    rgba(0,0,0,.35);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Keep content above the overlay */
-.dashboard-header,
-.dashboard-main {
-  position: relative;
-  z-index: 1;
-}
-
-/* Optional header chrome (matches your dark theme) */
-.dashboard-header {
-  backdrop-filter: blur(6px);
-  background: linear-gradient(180deg, rgba(15,23,42,0.95), rgba(15,23,42,0.75));
-  border-bottom: 1px solid var(--border);
-}
-
-/* Simple text helpers used in JS */
-.h1 { margin: 0; color: var(--text); font-weight: 800; letter-spacing: .2px; }
-.muted { color: var(--text-muted); }
-
-/* ========== Loading State ========== */
-.loading-container {
+/* ========= Header ========= */
+.dash-header {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.dash-title {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: .2px;
+  font-size: 22px;
+}
+
+.dash-subtitle {
+  margin: 2px 0 0;
+  color: #9fb6e6;
+  font-size: 12px;
+}
+
+.dash-actions { display: flex; gap: 10px; }
+
+.btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 60px;
-  background: linear-gradient(180deg, var(--surface), var(--surface-2));
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1);
-  gap: var(--space-3);
+  height: 36px;
+  padding: 0 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid #28416d;
+  background: rgba(13,25,48,.6);
+  color: #eaf4ff;
+}
+.btn:hover { filter: brightness(1.05); }
+.btn-primary {
+  border: none;
+  background: linear-gradient(135deg, #2cd4ff, #1e90ff);
+  color: #06121e;
+}
+.btn-ghost {
+  background: rgba(13,25,48,.35);
+  border: 1px solid #355086;
+  color: #d5e7ff;
+}
+.btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
+
+/* ========= KPI cards ========= */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.kpi-card {
+  background: linear-gradient(180deg, rgba(16,28,56,.85), rgba(12,22,44,.85));
+  border: 1px solid rgba(53,80,134,.6);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  padding: 14px;
+}
+.kpi-label { color: #9fb6e6; font-weight: 700; font-size: 12px; }
+.kpi-value { color: #2cd4ff; font-weight: 900; font-size: 26px; margin-top: 6px; }
+.kpi-meta  { color: #9fb6e6; font-size: 12px; margin-top: 2px; }
+
+/* ========= Cards & layout ========= */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
-/* Optional spinner element:
-   <div class="spinner" aria-hidden="true"></div> */
+.glass-card {
+  background: linear-gradient(180deg, rgba(16,28,56,.9), rgba(10,20,40,.9));
+  border: 1px solid rgba(53,80,134,.65);
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(0,0,0,.35);
+  padding: 14px;
+}
+
+.card-title {
+  color: #c9d8ff;
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.chart-box { height: 260px; }
+
+/* ========= Error ========= */
+.error-banner {
+  background: linear-gradient(180deg, #2a1010, #1f0c0c);
+  color: #ffd7d7;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  margin-bottom: 12px;
+}
+
+/* ========= Loading ========= */
+.loading-card {
+  max-width: 420px;
+  margin: 14vh auto;
+  background: linear-gradient(180deg, rgba(16,28,56,.9), rgba(10,20,40,.9));
+  border: 1px solid rgba(53,80,134,.65);
+  border-radius: 16px;
+  padding: 28px 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: #d5e7ff;
+}
 .spinner {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
+  width: 28px; height: 28px; border-radius: 999px;
   border: 3px solid rgba(255, 255, 255, 0.18);
-  border-top-color: var(--brand);
+  border-top-color: #2cd4ff;
   animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ========== Error Message ========== */
-.error-message {
-  background: linear-gradient(180deg, #2a1010, #1f0c0c);
-  color: #ffd7d7;
-  padding: 14px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.12);
-  margin-bottom: 20px;
-  text-align: left;
-  line-height: 1.5;
-}
-
-/* ========== Device Types Grid ========== */
-.device-types-grid {
+/* ========= Recent devices ========= */
+.recent-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-4);
-  margin-top: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
 }
-
-/* Card */
-.device-type-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4);
-  background: linear-gradient(180deg, var(--surface), var(--surface-2));
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1);
-  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+.recent-card {
+  background: linear-gradient(180deg, rgba(13,25,48,.9), rgba(10,20,40,.9));
+  border: 1px solid rgba(53,80,134,.55);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex; flex-direction: column; gap: 6px;
 }
+.recent-top { display: flex; align-items: center; gap: 8px; }
+.recent-type { color: #9fb6e6; font-size: 12px; }
+.recent-name { font-weight: 800; letter-spacing: .2px; }
+.recent-ip { color: #9fb6e6; font-size: 12px; }
 
-.device-type-item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-2);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-/* Name */
-.device-type-name {
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.2px;
-}
-
-/* Count Pill */
-.device-type-count {
-  background: linear-gradient(135deg, var(--info), #60a5fa);
-  color: #06121e;
-  padding: 6px 10px;
+.status-pill {
+  margin-left: auto;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  border: 1px solid rgba(6, 18, 30, 0.1);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset;
-  letter-spacing: 0.3px;
+  font-size: 11px;
+  border: 1px solid rgba(53,80,134,.65);
+  background: rgba(255,255,255,.04);
 }
+.status-pill.online  { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.45); color: #bfffe1; }
+.status-pill.offline { background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.45); color: #ffd0d0; }
+.status-pill.warn    { background: rgba(251,191,36,.2); border-color: rgba(251,191,36,.45); color: #ffe9b8; }
 
-/* ========== Activity Status ========== */
-.activity-status {
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.2px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-/* Online */
-.activity-status.online {
-  color: #0e2e1a;
-  background: rgba(34, 197, 94, 0.18);
-  border-color: rgba(34, 197, 94, 0.35);
-}
-
-/* Offline */
-.activity-status.offline {
-  color: #3a0a0a;
-  background: rgba(239, 68, 68, 0.18);
-  border-color: rgba(239, 68, 68, 0.35);
-}
-
-/* You can add small dot indicators inside status if desired:
-   <span class="dot"></span> */
-.activity-status .dot {
-  width: 8px; height: 8px; border-radius: 999px; display: inline-block;
-  background: currentColor;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
-}
-
-/* ========== Subtle Utilities (optional) ========== */
-.section-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: var(--space-3);
-}
-
-.helper-muted { color: var(--text-muted); }
-
-/* ========== Responsive Tweaks ========== */
-@media (max-width: 768px) {
-  .loading-container { padding: 36px; }
-  .device-type-item { padding: var(--space-3); }
+/* ========= Responsive ========= */
+@media (max-width: 1024px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .grid-2 { grid-template-columns: 1fr; }
 }
